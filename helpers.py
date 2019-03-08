@@ -1,6 +1,8 @@
 import json
 from os.path import dirname, join
 
+import requests
+
 import pygaps
 
 
@@ -18,3 +20,15 @@ def load_isotherm(id):
     with open(path) as file:
         isotherm = pygaps.isotherm_from_json(file.read())
     return isotherm
+
+
+def load_nist_isotherm(filename):
+    """Load an isotherm from NIST ISODB."""
+
+    url = r"https://adsorption.nist.gov/isodb/api/isotherm/{0}".format(
+        filename)
+    r = requests.get(url)
+
+    # TODO: Need to fail gracefully
+
+    return pygaps.isotherm_from_json(r.text, fmt="NIST")

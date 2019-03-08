@@ -7,7 +7,7 @@ from bokeh.io import curdoc
 from bokeh.layouts import widgetbox
 from bokeh.palettes import Spectral10 as palette
 
-from helpers import load_data
+from helpers import load_data, load_nist_isotherm
 data_dict = load_data()
 
 
@@ -31,7 +31,7 @@ def gen_data(g1, g2, p):
         y0=[data_dict[g2][mat]['mL'][p] for mat in common],
         x1=[data_dict[g1][mat]['mKh'] for mat in common],
         y1=[data_dict[g2][mat]['mKh'] for mat in common],
-        z0=[data_dict[g1][mat]['lL'] + data_dict[g2][mat]['lL']
+        z0=[data_dict[g1][mat]['lL'][p] + data_dict[g2][mat]['lL'][p]
             for mat in common],
         z1=[data_dict[g1][mat]['lKh'] + data_dict[g2][mat]['lKh']
             for mat in common],
@@ -44,10 +44,10 @@ source = ColumnDataSource(data=gen_data(gas[0], gas[1], pnt))
 # Error generator and points
 
 
-def gen_error(index):
+def gen_error(index, p=0):
 
     if index is None:
-        errors.data = dict(
+        return dict(
             x00=[], y00=[], x01=[], y01=[],
             x10=[], y10=[], x11=[], y11=[])
 
@@ -55,8 +55,8 @@ def gen_error(index):
         mat = source.data['labels'][index]
         x0 = source.data['x0'][index]
         y0 = source.data['y0'][index]
-        xe00 = data_dict[gas[0]][mat]['eL']
-        xe01 = data_dict[gas[1]][mat]['eL']
+        xe00 = data_dict[gas[0]][mat]['eL'][p]
+        xe01 = data_dict[gas[1]][mat]['eL'][p]
         x1 = source.data['x1'][index]
         y1 = source.data['y1'][index]
         xe10 = data_dict[gas[0]][mat]['eKh']
@@ -72,12 +72,10 @@ def gen_error(index):
             x11=[x1 + xe10, x1],
             y11=[y1, y1+xe11],
         )
-        errors.data = e_dict
+        return e_dict
 
 
-errors = ColumnDataSource(data=dict(
-    x00=[], y00=[], x01=[], y01=[],
-    x10=[], y10=[], x11=[], y11=[]))
+errors = ColumnDataSource(data=gen_error(None))
 
 # #########################################################################
 # Plot
@@ -128,39 +126,39 @@ mapper1 = linear_cmap(
 l_width = 500
 
 # create a new plot and add a renderer
-left = figure(tools=TOOLS, tooltips=TOOLTIP1,
-              active_scroll="wheel_zoom",
-              x_range=(0, 12), y_range=(0, 12),
-              plot_width=l_width, plot_height=500,
-              title='Amount adsorbed')
-rendl = left.circle('x0', 'y0', source=source, size=10,
-                    line_color=mapper0, color=mapper0)
-errs = left.segment('x00', 'y00', 'x01', 'y01', source=errors,
-                    color="black", line_width=2)
+p_loading = figure(tools=TOOLS, tooltips=TOOLTIP1,
+                   active_scroll="wheel_zoom",
+                   x_range=(0, 12), y_range=(0, 12),
+                   plot_width=l_width, plot_height=500,
+                   title='Amount adsorbed')
+rendl = p_loading.circle('x0', 'y0', source=source, size=10,
+                         line_color=mapper0, color=mapper0)
+errs = p_loading.segment('x00', 'y00', 'x01', 'y01', source=errors,
+                         color="black", line_width=2)
 
 # create another new plot and add a renderer
-right = figure(tools=TOOLS, tooltips=TOOLTIP2,
-               active_scroll="wheel_zoom",
-               x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
-               plot_width=500, plot_height=500,
-               y_axis_type="log", x_axis_type="log",
-               title='Initial Henry constant')
-rendr = right.circle('x1', 'y1', source=source, size=10,
-                     line_color=mapper1, color=mapper1)
-errs = right.segment('x10', 'y10', 'x11', 'y11', source=errors,
-                     color="black", line_width=2)
+p_henry = figure(tools=TOOLS, tooltips=TOOLTIP2,
+                 active_scroll="wheel_zoom",
+                 x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
+                 plot_width=500, plot_height=500,
+                 y_axis_type="log", x_axis_type="log",
+                 title='Initial Henry constant')
+rendr = p_henry.circle('x1', 'y1', source=source, size=10,
+                       line_color=mapper1, color=mapper1)
+errs = p_henry.segment('x10', 'y10', 'x11', 'y11', source=errors,
+                       color="black", line_width=2)
 
-left.xaxis.axis_label = '%s (mmol/g)' % gas[0]
-left.yaxis.axis_label = '%s (mmol/g)' % gas[1]
-right.xaxis.axis_label = '%s (dimensionless)' % gas[0]
-right.yaxis.axis_label = '%s (dimensionless)' % gas[1]
+p_loading.xaxis.axis_label = '%s (mmol/g)' % gas[0]
+p_loading.yaxis.axis_label = '%s (mmol/g)' % gas[1]
+p_henry.xaxis.axis_label = '%s (dimensionless)' % gas[0]
+p_henry.yaxis.axis_label = '%s (dimensionless)' % gas[1]
 
 color_bar0 = ColorBar(
     color_mapper=mapper0['transform'], width=8,  location=(0, 0))
 color_bar1 = ColorBar(
     color_mapper=mapper1['transform'], width=8,  location=(0, 0))
-left.add_layout(color_bar0, 'right')
-right.add_layout(color_bar1, 'right')
+p_loading.add_layout(color_bar0, 'right')
+p_henry.add_layout(color_bar1, 'right')
 
 # #########################################################################
 # Add click display between the two
@@ -174,7 +172,7 @@ rendr.hover_glyph = sel
 
 
 # #########################################################################
-# Drop-down selections
+# Radio selections
 
 s_type = RadioButtonGroup(
     labels=["CO2 / N2", "CO2 / CH4", "C3H6 / C2H4"], active=0)
@@ -201,16 +199,40 @@ def s_type_callback(index):
         raise Exception
 
     # Update labels
-    left.xaxis.axis_label = '%s (mmol/g)' % gas[0]
-    left.yaxis.axis_label = '%s (mmol/g)' % gas[1]
-    right.xaxis.axis_label = '%s (dimensionless)' % gas[0]
-    right.yaxis.axis_label = '%s (dimensionless)' % gas[1]
+    p_loading.xaxis.axis_label = '%s (mmol/g)' % gas[0]
+    p_loading.yaxis.axis_label = '%s (mmol/g)' % gas[1]
+    p_henry.xaxis.axis_label = '%s (dimensionless)' % gas[0]
+    p_henry.yaxis.axis_label = '%s (dimensionless)' % gas[1]
 
 
 s_type.on_click(s_type_callback)
 
+
 # #########################################################################
-# Add slider for pressure
+# Isotherm graph
+
+# create a new plot and add a renderer
+p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
+                 plot_width=l_width, plot_height=500,
+                 title='Amount adsorbed')
+
+
+def gen_isos(index):
+
+    if index is None:
+        return dict()
+
+    else:
+        mat = source.data['labels'][index]
+        isos = data_dict[gas[0]][mat]['isos']
+
+        for iso in isos:
+
+            parsed = load_nist_isotherm(iso)
+            p_g1iso.line(x=parsed.pressure(), y=parsed.loading())
+
+
+# #########################################################################
 
 # Set up widgets
 slider = Slider(title="pressure", value=1, start=1, end=3, step=1,)
@@ -218,7 +240,9 @@ slider = Slider(title="pressure", value=1, start=1, end=3, step=1,)
 
 def pressure_update(attrname, old, new):
     source.data = gen_data(gas[0], gas[1], slider.value - 1)
-    gen_error(None)
+    sel = source.selected.indices
+    if sel:
+        errors.data = gen_error(sel[0], slider.value - 1)
 
 
 slider.on_change('value', pressure_update)
@@ -227,18 +251,23 @@ slider.on_change('value', pressure_update)
 # #########################################################################
 # Div Display details
 
-details = Div(
-    text="""
-    <div>
-        <h2>Selected material</h2>
-    </div>
-    <div>
-        <span>Trying something</span>
-        <span style="font-size: 20px; font-weight: bold;>And something else</span>
-    </div>
-    """,
-    width=800, height=500
-)
+def gen_details(index=None):
+    if index is None:
+        return ""
+    else:
+        text = """
+        <div>
+            <h2>Material</h2>
+        </div>
+        <div>
+            <span>Trying something</span>
+            <span style="font-size: 20px; font-weight: bold;>And something else</span>
+        </div>
+        """
+        return text
+
+
+details = Div(text=gen_details(), width=800, height=500)
 
 # #########################################################################
 # Callback for selection
@@ -246,9 +275,15 @@ details = Div(
 
 def callback(attr, old, new):
     if len(new) == 1:
-        gen_error(new[0])
+        errors.data = gen_error(new[0], pnt)
+        details.text = gen_details(new[0])
+        gen_isos(new[0])
+        details.style = dict()
+        # details.style = ""
     else:
-        gen_error(None)
+        errors.data = gen_error(None, pnt)
+        details.style = dict(display="none")
+        # details.text = gen_details(None)
 
 
 source.selected.on_change('indices', callback)
@@ -269,13 +304,12 @@ instructions = Div(
     width=800, height=100
 )
 
-# plot = gridplot([[left, right]])
 l = layout([
     [instructions],
     [s_type],
-    [left, right],
+    gridplot([[p_loading, p_henry]]),
     [widgetbox(slider)],
-    [details]
+    [details, p_g1iso]
 ])
 
 
