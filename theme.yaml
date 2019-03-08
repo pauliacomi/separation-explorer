@@ -1,0 +1,5 @@
+# This file controls the default values for all unset plot characteristics
+
+attrs:
+  Figure:
+    background_fill_color: '#FFFFFF'
