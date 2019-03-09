@@ -9,8 +9,6 @@
             "type": "python",
             "request": "launch",
             "module": "bokeh",
-            "env": {
-            },
             "args": [
                 "serve",
                 "${workspaceFolder}",

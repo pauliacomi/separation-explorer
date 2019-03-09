@@ -7,12 +7,17 @@ from bokeh.io import curdoc
 from bokeh.layouts import widgetbox
 from bokeh.palettes import Spectral10 as palette
 
-from helpers import load_data, load_nist_isotherm
+from functools import partial
+from threading import Thread
+
+from tornado import gen
+
+from helpers import load_data, load_nist_isotherm, intersect
 data_dict = load_data()
 
-
-def intersect(a, b):
-    return [val for val in a if val in b]
+# This is important! Save curdoc() to make sure all threads
+# see the same document.
+doc = curdoc()
 
 
 gases = ['carbon dioxide', 'nitrogen', 'methane', 'ethane', 'ethene']
@@ -209,12 +214,20 @@ s_type.on_click(s_type_callback)
 
 
 # #########################################################################
-# Isotherm graph
+# Isotherm graphs
 
 # create a new plot and add a renderer
 p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                 plot_width=l_width, plot_height=500,
-                 title='Amount adsorbed')
+                 plot_width=400, plot_height=400,
+                 title='Isotherms 1')
+p_g2iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
+                 plot_width=400, plot_height=400,
+                 title='Isotherms 2')
+
+
+@gen.coroutine
+def update(f, x, y):
+    f.line(x=x, y=y)
 
 
 def gen_isos(index):
@@ -224,16 +237,25 @@ def gen_isos(index):
 
     else:
         mat = source.data['labels'][index]
-        isos = data_dict[gas[0]][mat]['isos']
+        isos0 = data_dict[gas[0]][mat]['isos']
 
-        for iso in isos:
+        for iso in isos0:
+            parsed = load_nist_isotherm(iso)
+
+            # but update the document from callback
+            doc.add_next_tick_callback(
+                partial(update, f=p_g1iso, x=parsed.pressure(), y=parsed.loading()))
+
+        isos1 = data_dict[gas[1]][mat]['isos']
+
+        for iso in isos1:
 
             parsed = load_nist_isotherm(iso)
-            p_g1iso.line(x=parsed.pressure(), y=parsed.loading())
+            doc.add_next_tick_callback(
+                partial(update, f=p_g2iso, x=parsed.pressure(), y=parsed.loading()))
 
 
 # #########################################################################
-
 # Set up widgets
 slider = Slider(title="pressure", value=1, start=1, end=3, step=1,)
 
@@ -249,7 +271,7 @@ slider.on_change('value', pressure_update)
 
 
 # #########################################################################
-# Div Display details
+# HTML display
 
 def gen_details(index=None):
     if index is None:
@@ -267,30 +289,7 @@ def gen_details(index=None):
         return text
 
 
-details = Div(text=gen_details(), width=800, height=500)
-
-# #########################################################################
-# Callback for selection
-
-
-def callback(attr, old, new):
-    if len(new) == 1:
-        errors.data = gen_error(new[0], pnt)
-        details.text = gen_details(new[0])
-        gen_isos(new[0])
-        details.style = dict()
-        # details.style = ""
-    else:
-        errors.data = gen_error(None, pnt)
-        details.style = dict(display="none")
-        # details.text = gen_details(None)
-
-
-source.selected.on_change('indices', callback)
-
-
-# #########################################################################
-# Final layout
+details = Div(text=gen_details(), width=400, height=400)
 
 instructions = Div(
     text="""
@@ -304,14 +303,47 @@ instructions = Div(
     width=800, height=100
 )
 
-l = layout([
+material_detail = row([details, gridplot([[p_g1iso, p_g2iso]])])
+
+dash_layout = layout([
     [instructions],
     [s_type],
     gridplot([[p_loading, p_henry]]),
     [widgetbox(slider)],
-    [details, p_g1iso]
 ])
 
 
-curdoc().title = "Graphs"
-curdoc().add_root(l)
+# #########################################################################
+# Callback for selection
+
+
+def callback(attr, old, new):
+
+    if len(new) == 1:
+        # The user has selected a point
+
+        # Display error points:
+        errors.data = gen_error(new[0], pnt)
+
+        # Display layout
+        dash_layout.children.append(material_detail)
+
+        # Generate material details
+        details.text = gen_details(new[0])
+
+        # Generate plots
+        Thread(target=gen_isos, args=[new[0]]).start()
+
+    else:
+        dash_layout.children.remove(material_detail)
+        errors.data = gen_error(None, pnt)
+
+
+source.selected.on_change('indices', callback)
+
+
+# #########################################################################
+# Final layout
+
+doc.title = "Graphs"
+doc.add_root(dash_layout)

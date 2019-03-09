@@ -6,6 +6,10 @@ import requests
 import pygaps
 
 
+def intersect(a, b):
+    return [val for val in a if val in b]
+
+
 def load_data():
     """Load explorer data."""
     path = join(dirname(__file__), 'data', 'data.json')
