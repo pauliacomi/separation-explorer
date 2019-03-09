@@ -12,338 +12,309 @@ from threading import Thread
 
 from tornado import gen
 
+from helpers import INSTRUCTIONS, TOOLTIP, TOOLS
 from helpers import load_data, load_nist_isotherm, intersect
-data_dict = load_data()
-
-# This is important! Save curdoc() to make sure all threads
-# see the same document.
-doc = curdoc()
 
 
-gases = ['carbon dioxide', 'nitrogen', 'methane', 'ethane', 'ethene']
-gas = [gases[0], gases[1]]
-pnt = 0
+class Dashboard():
+    def __init__(self):
 
+        # Save curdoc() to make sure all threads see the same document.
+        self.doc = curdoc()
 
-def gen_data(g1, g2, p):
+        self.data_dict = load_data()
 
-    common = intersect([a for a in data_dict[g1]],
-                       [a for a in data_dict[g2]])
+        # Parameters
+        self.gases = ['carbon dioxide', 'nitrogen',
+                      'methane', 'ethane', 'ethene']
+        self.gas = [self.gases[0], self.gases[1]]
+        self.pnt = 0
 
-    return dict(
-        labels=common,
-        x0=[data_dict[g1][mat]['mL'][p] for mat in common],
-        y0=[data_dict[g2][mat]['mL'][p] for mat in common],
-        x1=[data_dict[g1][mat]['mKh'] for mat in common],
-        y1=[data_dict[g2][mat]['mKh'] for mat in common],
-        z0=[data_dict[g1][mat]['lL'][p] + data_dict[g2][mat]['lL'][p]
-            for mat in common],
-        z1=[data_dict[g1][mat]['lKh'] + data_dict[g2][mat]['lKh']
-            for mat in common],
-    )
+        self.data = ColumnDataSource(data=self.gen_data(
+            self.gas[0], self.gas[1], self.pnt))
+        self.data.selected.on_change('indices', self.selection_callback)
+        self.errors = ColumnDataSource(data=self.gen_error(None))
 
+        # Instructions
+        self.instructions = Div(text=INSTRUCTIONS, width=800, height=100)
 
-source = ColumnDataSource(data=gen_data(gas[0], gas[1], pnt))
+        # Radio selections
+        self.s_type = RadioButtonGroup(
+            labels=["CO2 / N2", "CO2 / CH4", "C3H6 / C2H4"], active=0)
+        self.s_type.on_click(self.s_type_callback)
 
-# #########################################################################
-# Error generator and points
+        # Top graphs
+        self.p_loading = None
+        self.p_henry = None
+        self.top_graphs()
 
+        # Pressure slider
+        self.slider = Slider(title="pressure", value=1, start=1, end=3, step=1)
+        self.slider.on_change('value', self.pressure_callback)
 
-def gen_error(index, p=0):
+        # Details text
+        self.details = Div(text=self.gen_details(), width=400, height=400)
 
-    if index is None:
+        # Isotherms
+        self.p_g1iso = None
+        self.p_g2iso = None
+        self.bottom_graphs()
+
+        # Layout
+        self.material_detail = row(
+            [self.details, gridplot([[self.p_g1iso, self.p_g2iso]])])
+
+        self.dash_layout = layout([
+            [self.instructions],
+            [self.s_type],
+            gridplot([[self.p_loading, self.p_henry]]),
+            [widgetbox(self.slider)],
+        ])
+        self.doc.title = "Graphs"
+
+    def show_dash(self):
+        self.doc.add_root(self.dash_layout)
+
+    def top_graphs(self):
+
+        mapper0 = self.mapper(0)
+        mapper1 = self.mapper(1)
+
+        l_width = 500
+
+        # create a new plot and add a renderer
+        self.p_loading = figure(tools=TOOLS, tooltips=TOOLTIP.format(0),
+                                active_scroll="wheel_zoom",
+                                x_range=(0, 12), y_range=(0, 12),
+                                plot_width=l_width, plot_height=500,
+                                title='Amount adsorbed')
+
+        # create another new plot and add a renderer
+        self.p_henry = figure(tools=TOOLS, tooltips=TOOLTIP.format(1),
+                              active_scroll="wheel_zoom",
+                              x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
+                              plot_width=500, plot_height=500,
+                              y_axis_type="log", x_axis_type="log",
+                              title='Initial Henry constant')
+
+        # Data
+        rendl = self.p_loading.circle('x0', 'y0', source=self.data, size=10,
+                                      line_color=mapper0, color=mapper0)
+        rendr = self.p_henry.circle('x1', 'y1', source=self.data, size=10,
+                                    line_color=mapper1, color=mapper1)
+
+        # Errors
+        errs = self.p_loading.segment('x00', 'y00', 'x01', 'y01', source=self.errors,
+                                      color="black", line_width=2)
+        errs = self.p_henry.segment('x10', 'y10', 'x11', 'y11', source=self.errors,
+                                    color="black", line_width=2)
+
+        # Colorbars
+        color_bar0 = ColorBar(
+            color_mapper=mapper0['transform'], width=8,  location=(0, 0))
+        color_bar1 = ColorBar(
+            color_mapper=mapper1['transform'], width=8,  location=(0, 0))
+        self.p_loading.add_layout(color_bar0, 'right')
+        self.p_henry.add_layout(color_bar1, 'right')
+
+        # Add a linked selection and hover effect
+        sel = Circle(fill_alpha=1, fill_color="black", line_color='red')
+        rendl.selection_glyph = sel
+        rendr.selection_glyph = sel
+        rendl.hover_glyph = sel
+        rendr.hover_glyph = sel
+
+        # Generate labels:
+        self.top_graph_label()
+
+    def top_graph_label(self):
+        self.p_loading.xaxis.axis_label = '{0} (mmol/g)'.format(self.gas[0])
+        self.p_loading.yaxis.axis_label = '{0} (mmol/g)'.format(self.gas[1])
+        self.p_henry.xaxis.axis_label = '{0} (dimensionless)'.format(
+            self.gas[0])
+        self.p_henry.yaxis.axis_label = '{0} (dimensionless)'.format(
+            self.gas[1])
+
+    def mapper(self, z):
+        return linear_cmap(
+            field_name='z{0}'.format(z), palette=palette,
+            low_color='grey', high_color='red',
+            low=3, high=90)
+
+    def bottom_graphs(self):
+        self.p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
+                              plot_width=400, plot_height=400,
+                              title='Isotherms 1')
+        self.p_g2iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
+                              plot_width=400, plot_height=400,
+                              title='Isotherms 2')
+
+    # #########################################################################
+    # Data generator
+
+    def gen_data(self, g1, g2, p):
+
+        common = intersect([a for a in self.data_dict[g1]],
+                           [a for a in self.data_dict[g2]])
+
         return dict(
-            x00=[], y00=[], x01=[], y01=[],
-            x10=[], y10=[], x11=[], y11=[])
-
-    else:
-        mat = source.data['labels'][index]
-        x0 = source.data['x0'][index]
-        y0 = source.data['y0'][index]
-        xe00 = data_dict[gas[0]][mat]['eL'][p]
-        xe01 = data_dict[gas[1]][mat]['eL'][p]
-        x1 = source.data['x1'][index]
-        y1 = source.data['y1'][index]
-        xe10 = data_dict[gas[0]][mat]['eKh']
-        xe11 = data_dict[gas[1]][mat]['eKh']
-
-        e_dict = dict(
-            x00=[x0 - xe00, x0],
-            y00=[y0, y0-xe01],
-            x01=[x0 + xe00, x0],
-            y01=[y0, y0+xe01],
-            x10=[x1 - xe10, x1],
-            y10=[y1, y1-xe11],
-            x11=[x1 + xe10, x1],
-            y11=[y1, y1+xe11],
+            labels=common,
+            x0=[self.data_dict[g1][mat]['mL'][p] for mat in common],
+            y0=[self.data_dict[g2][mat]['mL'][p] for mat in common],
+            x1=[self.data_dict[g1][mat]['mKh'] for mat in common],
+            y1=[self.data_dict[g2][mat]['mKh'] for mat in common],
+            z0=[self.data_dict[g1][mat]['lL'][p] + self.data_dict[g2][mat]['lL'][p]
+                for mat in common],
+            z1=[self.data_dict[g1][mat]['lKh'] + self.data_dict[g2][mat]['lKh']
+                for mat in common],
         )
-        return e_dict
-
-
-errors = ColumnDataSource(data=gen_error(None))
-
-# #########################################################################
-# Plot
-
-TOOLS = "pan,wheel_zoom,tap,reset"
-
-TOOLTIP1 = """
-<div>
-    <div>
-        <span style="font-size: 17px; font-weight: bold;">@labels</span>
-    </div>
-    <div>
-        <span style="font-size: 10px;">Location:</span>
-        <span style="font-size: 10px; color: #696;">(@x0, @y0)</span>
-    </div>
-    <div>
-        <span style="font-size: 10px;">Isotherms:</span>
-        <span style="font-size: 10px; color: #696;">@z0</span>
-    </div>
-</div>
-"""
-
-TOOLTIP2 = """
-<div>
-    <div>
-        <span style="font-size: 17px; font-weight: bold;">@labels</span>
-    </div>
-    <div>
-        <span style="font-size: 10px;">Location:</span>
-        <span style="font-size: 10px; color: #696;">(@x1, @y1)</span>
-    </div>
-    <div>
-        <span style="font-size: 10px;">Isotherms:</span>
-        <span style="font-size: 10px; color: #696;">@z1</span>
-    </div>
-</div>
-"""
-
-mapper0 = linear_cmap(
-    field_name='z0', palette=palette,
-    low_color='grey', high_color='red',
-    low=3, high=90)
-mapper1 = linear_cmap(
-    field_name='z1', palette=palette,
-    low_color='grey', high_color='red',
-    low=3, high=90)
-
-l_width = 500
-
-# create a new plot and add a renderer
-p_loading = figure(tools=TOOLS, tooltips=TOOLTIP1,
-                   active_scroll="wheel_zoom",
-                   x_range=(0, 12), y_range=(0, 12),
-                   plot_width=l_width, plot_height=500,
-                   title='Amount adsorbed')
-rendl = p_loading.circle('x0', 'y0', source=source, size=10,
-                         line_color=mapper0, color=mapper0)
-errs = p_loading.segment('x00', 'y00', 'x01', 'y01', source=errors,
-                         color="black", line_width=2)
-
-# create another new plot and add a renderer
-p_henry = figure(tools=TOOLS, tooltips=TOOLTIP2,
-                 active_scroll="wheel_zoom",
-                 x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
-                 plot_width=500, plot_height=500,
-                 y_axis_type="log", x_axis_type="log",
-                 title='Initial Henry constant')
-rendr = p_henry.circle('x1', 'y1', source=source, size=10,
-                       line_color=mapper1, color=mapper1)
-errs = p_henry.segment('x10', 'y10', 'x11', 'y11', source=errors,
-                       color="black", line_width=2)
-
-p_loading.xaxis.axis_label = '%s (mmol/g)' % gas[0]
-p_loading.yaxis.axis_label = '%s (mmol/g)' % gas[1]
-p_henry.xaxis.axis_label = '%s (dimensionless)' % gas[0]
-p_henry.yaxis.axis_label = '%s (dimensionless)' % gas[1]
-
-color_bar0 = ColorBar(
-    color_mapper=mapper0['transform'], width=8,  location=(0, 0))
-color_bar1 = ColorBar(
-    color_mapper=mapper1['transform'], width=8,  location=(0, 0))
-p_loading.add_layout(color_bar0, 'right')
-p_henry.add_layout(color_bar1, 'right')
-
-# #########################################################################
-# Add click display between the two
-
-sel = Circle(fill_alpha=1, size=15, fill_color="black", line_color=None)
-
-rendl.selection_glyph = sel
-rendr.selection_glyph = sel
-rendl.hover_glyph = sel
-rendr.hover_glyph = sel
-
-
-# #########################################################################
-# Radio selections
 
-s_type = RadioButtonGroup(
-    labels=["CO2 / N2", "CO2 / CH4", "C3H6 / C2H4"], active=0)
+    # #########################################################################
+    # Error generator
+
+    def gen_error(self, index, p=0):
+
+        if index is None:
+            return dict(
+                x00=[], y00=[], x01=[], y01=[],
+                x10=[], y10=[], x11=[], y11=[])
+
+        else:
+            mat = self.data.data['labels'][index]
+            x0 = self.data.data['x0'][index]
+            y0 = self.data.data['y0'][index]
+            xe00 = self.data_dict[self.gas[0]][mat]['eL'][p]
+            xe01 = self.data_dict[self.gas[1]][mat]['eL'][p]
+            x1 = self.data.data['x1'][index]
+            y1 = self.data.data['y1'][index]
+            xe10 = self.data_dict[self.gas[0]][mat]['eKh']
+            xe11 = self.data_dict[self.gas[1]][mat]['eKh']
+
+            e_dict = dict(
+                x00=[x0 - xe00, x0],
+                y00=[y0, y0-xe01],
+                x01=[x0 + xe00, x0],
+                y01=[y0, y0+xe01],
+                x10=[x1 - xe10, x1],
+                y10=[y1, y1-xe11],
+                x11=[x1 + xe10, x1],
+                y11=[y1, y1+xe11],
+            )
+            return e_dict
+
+    # #########################################################################
+    # Text
+
+    def gen_details(self, index=None):
+        if index is None:
+            return ""
+        else:
+            text = """
+            <div>
+                <h2>Material</h2>
+            </div>
+            <div>
+                <span>Trying something</span>
+                <span style="font-size: 20px; font-weight: bold;>And something else</span>
+            </div>
+            """
+            return text
+
+    # #########################################################################
+    # Isotherms
+
+    def gen_isos(self, index, which=None):
+
+        if index is None:
+            self.doc.add_next_tick_callback(self.bottom_graphs)
+
+        else:
+            mat = self.data.data['labels'][index]
+
+            if which == 'right':
+                isos = self.data_dict[self.gas[0]][mat]['isos']
+                fig = self.p_g1iso
+            elif which == 'left':
+                isos = self.data_dict[self.gas[1]][mat]['isos']
+                fig = self.p_g2iso
+            else:
+                raise Exception
+
+            for iso in isos:
+                parsed = load_nist_isotherm(iso)
+
+                # but update the document from callback
+                self.doc.add_next_tick_callback(
+                    partial(self.iso_update, f=fig, x=parsed.pressure(), y=parsed.loading()))
+
+    # #########################################################################
+    # Update
+    @gen.coroutine
+    def iso_update(self, f, x, y):
+        f.line(x=x, y=y)
+
+    # #########################################################################
+    # Selection update
+
+    def s_type_callback(self, index):
+
+        # Reset any selected materials
+        self.data.selected.update(indices=[])
+
+        if index == 0:
+            self.gas[0] = self.gases[0]
+            self.gas[1] = self.gases[1]
+            self.data.data = self.gen_data(self.gas[0], self.gas[1], self.pnt)
+        elif index == 1:
+            self.gas[0] = self.gases[0]
+            self.gas[1] = self.gases[2]
+            self.data.data = self.gen_data(self.gas[0], self.gas[1], self.pnt)
+        elif index == 2:
+            self.gas[0] = self.gases[3]
+            self.gas[1] = self.gases[4]
+            self.data.data = self.gen_data(self.gas[0], self.gas[1], self.pnt)
+        else:
+            raise Exception
 
+        # Update labels
+        self.top_graph_label()
 
-def s_type_callback(index):
+    # #########################################################################
+    # Set up pressure slider and callback
 
-    # Reset selected
-    source.selected.update(indices=[])
+    def pressure_callback(self, attrname, old, new):
+        self.data.data = self.gen_data(
+            self.gas[0], self.gas[1], self.slider.value - 1)
+        sel = self.data.selected.indices
+        if sel:
+            self.errors.data = self.gen_error(sel[0], self.slider.value - 1)
 
-    if index == 0:
-        gas[0] = gases[0]
-        gas[1] = gases[1]
-        source.data = gen_data(gas[0], gas[1], pnt)
-    elif index == 1:
-        gas[0] = gases[0]
-        gas[1] = gases[2]
-        source.data = gen_data(gas[0], gas[1], pnt)
-    elif index == 2:
-        gas[0] = gases[3]
-        gas[1] = gases[4]
-        source.data = gen_data(gas[0], gas[1], pnt)
-    else:
-        raise Exception
+    # #########################################################################
+    # Callback for selection
 
-    # Update labels
-    p_loading.xaxis.axis_label = '%s (mmol/g)' % gas[0]
-    p_loading.yaxis.axis_label = '%s (mmol/g)' % gas[1]
-    p_henry.xaxis.axis_label = '%s (dimensionless)' % gas[0]
-    p_henry.yaxis.axis_label = '%s (dimensionless)' % gas[1]
+    def selection_callback(self, attr, old, new):
 
+        if len(new) == 1:
+            # The user has selected a point
 
-s_type.on_click(s_type_callback)
+            # Display error points:
+            self.errors.data = self.gen_error(new[0], self.pnt)
 
+            # Display layout
+            self.dash_layout.children.append(self.material_detail)
 
-# #########################################################################
-# Isotherm graphs
+            # Generate material details
+            self.details.text = self.gen_details(new[0])
 
-# create a new plot and add a renderer
-p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                 plot_width=400, plot_height=400,
-                 title='Isotherms 1')
-p_g2iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                 plot_width=400, plot_height=400,
-                 title='Isotherms 2')
+            # Generate plots
+            Thread(target=self.gen_isos, args=[new[0], 'left']).start()
+            Thread(target=self.gen_isos, args=[new[0], 'right']).start()
 
+        else:
+            Thread(target=self.gen_isos, args=[None]).start()
+            # dash_layout.children.remove(material_detail)
+            self.errors.data = self.gen_error(None, self.pnt)
 
-@gen.coroutine
-def update(f, x, y):
-    f.line(x=x, y=y)
 
-
-def gen_isos(index):
-
-    if index is None:
-        return dict()
-
-    else:
-        mat = source.data['labels'][index]
-        isos0 = data_dict[gas[0]][mat]['isos']
-
-        for iso in isos0:
-            parsed = load_nist_isotherm(iso)
-
-            # but update the document from callback
-            doc.add_next_tick_callback(
-                partial(update, f=p_g1iso, x=parsed.pressure(), y=parsed.loading()))
-
-        isos1 = data_dict[gas[1]][mat]['isos']
-
-        for iso in isos1:
-
-            parsed = load_nist_isotherm(iso)
-            doc.add_next_tick_callback(
-                partial(update, f=p_g2iso, x=parsed.pressure(), y=parsed.loading()))
-
-
-# #########################################################################
-# Set up widgets
-slider = Slider(title="pressure", value=1, start=1, end=3, step=1,)
-
-
-def pressure_update(attrname, old, new):
-    source.data = gen_data(gas[0], gas[1], slider.value - 1)
-    sel = source.selected.indices
-    if sel:
-        errors.data = gen_error(sel[0], slider.value - 1)
-
-
-slider.on_change('value', pressure_update)
-
-
-# #########################################################################
-# HTML display
-
-def gen_details(index=None):
-    if index is None:
-        return ""
-    else:
-        text = """
-        <div>
-            <h2>Material</h2>
-        </div>
-        <div>
-            <span>Trying something</span>
-            <span style="font-size: 20px; font-weight: bold;>And something else</span>
-        </div>
-        """
-        return text
-
-
-details = Div(text=gen_details(), width=400, height=400)
-
-instructions = Div(
-    text="""
-    <h1>Material explorer for separations</h1>
-    Select the separation dataset by clicking on the buttons below.
-    Hover over a point to display a tool-tip with material information,
-    click it to focus on a particular material.
-    The loading graph shows the amount adsorbed at the pressure
-    set by the slider below it.
-    """,
-    width=800, height=100
-)
-
-material_detail = row([details, gridplot([[p_g1iso, p_g2iso]])])
-
-dash_layout = layout([
-    [instructions],
-    [s_type],
-    gridplot([[p_loading, p_henry]]),
-    [widgetbox(slider)],
-])
-
-
-# #########################################################################
-# Callback for selection
-
-
-def callback(attr, old, new):
-
-    if len(new) == 1:
-        # The user has selected a point
-
-        # Display error points:
-        errors.data = gen_error(new[0], pnt)
-
-        # Display layout
-        dash_layout.children.append(material_detail)
-
-        # Generate material details
-        details.text = gen_details(new[0])
-
-        # Generate plots
-        Thread(target=gen_isos, args=[new[0]]).start()
-
-    else:
-        dash_layout.children.remove(material_detail)
-        errors.data = gen_error(None, pnt)
-
-
-source.selected.on_change('indices', callback)
-
-
-# #########################################################################
-# Final layout
-
-doc.title = "Graphs"
-doc.add_root(dash_layout)
+dash = Dashboard()
+dash.show_dash()
