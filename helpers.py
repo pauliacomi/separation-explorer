@@ -1,36 +1,15 @@
 import json
 from os.path import dirname, join
+from pathlib import Path
 
 import requests
 
 import pygaps
 
-INSTRUCTIONS = """
-    <h1>Material explorer for separations</h1>
-
-    Select the separation dataset by clicking on the buttons below.
-    Hover over a point to display a tool-tip with material information,
-    click it to focus on a particular material. The loading graph shows 
-    the amount adsorbed at the pressure set by the slider below it.
-"""
-
-TOOLTIP = """
-    <div>
-        <div>
-            <span style="font-size: 17px; font-weight: bold;">@labels</span>
-        </div>
-        <div>
-            <span style="font-size: 10px;">Coord (x, y):</span>
-            <span style="font-size: 10px; color: #696;">(@x{0}, @y{0})</span>
-        </div>
-        <div>
-            <span style="font-size: 10px;">Isotherms:</span>
-            <span style="font-size: 10px; color: #696;">@z{0}</span>
-        </div>
-    </div>
-"""
-
 TOOLS = "pan,wheel_zoom,tap,reset"
+
+TOOLTIP = Path(dirname(__file__), 'templates', 'tooltip.html').read_text()
+DETAILS = Path(dirname(__file__), 'templates', 'mat_details.html').read_text()
 
 
 def intersect(a, b):

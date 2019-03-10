@@ -12,7 +12,7 @@ from threading import Thread
 
 from tornado import gen
 
-from helpers import INSTRUCTIONS, TOOLTIP, TOOLS
+from helpers import TOOLS, TOOLTIP, DETAILS
 from helpers import load_data, load_nist_isotherm, intersect
 
 
@@ -25,18 +25,17 @@ class Dashboard():
         # Parameters
         self.gases = ['carbon dioxide', 'nitrogen',
                       'methane', 'ethane', 'ethene']
-        self.gas = [self.gases[0], self.gases[1]]
-        self.pnt = 0
+        self.g0 = self.gases[0]
+        self.g1 = self.gases[1]
+        self.pressure = 0
 
         # Bokeh specific data generation
         self.doc = curdoc()  # Save curdoc().
-        self.data = ColumnDataSource(data=self.gen_data(
-            self.gas[0], self.gas[1], self.pnt))
-        self.data.selected.on_change('indices', self.selection_callback)
+        self.data = ColumnDataSource(data=self.gen_data())
         self.errors = ColumnDataSource(data=self.gen_error(None))
 
-        # Instructions
-        self.instructions = Div(text=INSTRUCTIONS, width=800, height=100)
+        # Data callback
+        self.data.selected.on_change('indices', self.selection_callback)
 
         # Radio selections
         self.s_type = RadioButtonGroup(
@@ -49,7 +48,7 @@ class Dashboard():
         self.top_graphs()
 
         # Pressure slider
-        self.slider = Slider(title="pressure", value=1, start=1, end=3, step=1)
+        self.slider = Slider(title="Pressure", value=1, start=1, end=3, step=1)
         self.slider.on_change('value', self.pressure_callback)
 
         # Details text
@@ -65,7 +64,6 @@ class Dashboard():
             [self.details, gridplot([[self.p_g1iso, self.p_g2iso]])])
 
         self.dash_layout = layout([
-            [self.instructions],
             [self.s_type],
             gridplot([[self.p_loading, self.p_henry]]),
             [widgetbox(self.slider)],
@@ -128,12 +126,12 @@ class Dashboard():
         self.top_graph_label()
 
     def top_graph_label(self):
-        self.p_loading.xaxis.axis_label = '{0} (mmol/g)'.format(self.gas[0])
-        self.p_loading.yaxis.axis_label = '{0} (mmol/g)'.format(self.gas[1])
+        self.p_loading.xaxis.axis_label = '{0} (mmol/g)'.format(self.g0)
+        self.p_loading.yaxis.axis_label = '{0} (mmol/g)'.format(self.g1)
         self.p_henry.xaxis.axis_label = '{0} (dimensionless)'.format(
-            self.gas[0])
+            self.g0)
         self.p_henry.yaxis.axis_label = '{0} (dimensionless)'.format(
-            self.gas[1])
+            self.g1)
 
     def mapper(self, z):
         return linear_cmap(
@@ -152,27 +150,30 @@ class Dashboard():
     # #########################################################################
     # Data generator
 
-    def gen_data(self, g1, g2, p):
+    def gen_data(self):
 
-        common = intersect([a for a in self.data_dict[g1]],
-                           [a for a in self.data_dict[g2]])
+        common = intersect([a for a in self.data_dict[self.g0]],
+                           [a for a in self.data_dict[self.g1]])
+
+        dd = self.data_dict
+        g0 = self.g0
+        g1 = self.g1
+        p = self.pressure
 
         return dict(
             labels=common,
-            x0=[self.data_dict[g1][mat]['mL'][p] for mat in common],
-            y0=[self.data_dict[g2][mat]['mL'][p] for mat in common],
-            x1=[self.data_dict[g1][mat]['mKh'] for mat in common],
-            y1=[self.data_dict[g2][mat]['mKh'] for mat in common],
-            z0=[self.data_dict[g1][mat]['lL'][p] + self.data_dict[g2][mat]['lL'][p]
-                for mat in common],
-            z1=[self.data_dict[g1][mat]['lKh'] + self.data_dict[g2][mat]['lKh']
-                for mat in common],
+            x0=[dd[g0][mat]['mL'][p] for mat in common],
+            y0=[dd[g1][mat]['mL'][p] for mat in common],
+            x1=[dd[g0][mat]['mKh'] for mat in common],
+            y1=[dd[g1][mat]['mKh'] for mat in common],
+            z0=[dd[g0][mat]['lL'][p] + dd[g1][mat]['lL'][p] for mat in common],
+            z1=[dd[g0][mat]['lKh'] + dd[g1][mat]['lKh'] for mat in common],
         )
 
     # #########################################################################
     # Error generator
 
-    def gen_error(self, index, p=0):
+    def gen_error(self, index):
 
         if index is None:
             return dict(
@@ -180,15 +181,17 @@ class Dashboard():
                 x10=[], y10=[], x11=[], y11=[])
 
         else:
+            p = self.pressure
+
             mat = self.data.data['labels'][index]
             x0 = self.data.data['x0'][index]
             y0 = self.data.data['y0'][index]
-            xe00 = self.data_dict[self.gas[0]][mat]['eL'][p]
-            xe01 = self.data_dict[self.gas[1]][mat]['eL'][p]
+            xe00 = self.data_dict[self.g0][mat]['eL'][p]
+            xe01 = self.data_dict[self.g1][mat]['eL'][p]
             x1 = self.data.data['x1'][index]
             y1 = self.data.data['y1'][index]
-            xe10 = self.data_dict[self.gas[0]][mat]['eKh']
-            xe11 = self.data_dict[self.gas[1]][mat]['eKh']
+            xe10 = self.data_dict[self.g0][mat]['eKh']
+            xe11 = self.data_dict[self.g1][mat]['eKh']
 
             e_dict = dict(
                 x00=[x0 - xe00, x0],
@@ -209,16 +212,20 @@ class Dashboard():
         if index is None:
             return ""
         else:
-            text = """
-            <div>
-                <h2>Material</h2>
-            </div>
-            <div>
-                <span>Trying something</span>
-                <span style="font-size: 20px; font-weight: bold;>And something else</span>
-            </div>
-            """
-            return text
+            mat = self.data.data['labels'][index]
+
+            data = {
+                'material': mat,
+                'gas0': self.g0,
+                'gas1': self.g1,
+                'gas0_load': self.data.data['x0'][index],
+                'gas1_load': self.data.data['y0'][index],
+                'gas0_hk': self.data_dict[self.g0][mat]['mKh'],
+                'gas1_hk': self.data_dict[self.g1][mat]['mKh'],
+                'gas0_iso': len(self.data_dict[self.g0][mat]['isos']),
+                'gas1_iso': len(self.data_dict[self.g1][mat]['isos']),
+            }
+            return DETAILS.format(**data)
 
     # #########################################################################
     # Isotherms
@@ -232,10 +239,10 @@ class Dashboard():
             mat = self.data.data['labels'][index]
 
             if which == 'right':
-                isos = self.data_dict[self.gas[0]][mat]['isos']
+                isos = self.data_dict[self.g0][mat]['isos']
                 fig = self.p_g1iso
             elif which == 'left':
-                isos = self.data_dict[self.gas[1]][mat]['isos']
+                isos = self.data_dict[self.g1][mat]['isos']
                 fig = self.p_g2iso
             else:
                 raise Exception
@@ -264,17 +271,17 @@ class Dashboard():
         self.data.selected.update(indices=[])
 
         if index == 0:
-            self.gas[0] = self.gases[0]
-            self.gas[1] = self.gases[1]
-            self.data.data = self.gen_data(self.gas[0], self.gas[1], self.pnt)
+            self.g0 = self.gases[0]
+            self.g1 = self.gases[1]
+            self.data.data = self.gen_data()
         elif index == 1:
-            self.gas[0] = self.gases[0]
-            self.gas[1] = self.gases[2]
-            self.data.data = self.gen_data(self.gas[0], self.gas[1], self.pnt)
+            self.g0 = self.gases[0]
+            self.g1 = self.gases[2]
+            self.data.data = self.gen_data()
         elif index == 2:
-            self.gas[0] = self.gases[3]
-            self.gas[1] = self.gases[4]
-            self.data.data = self.gen_data(self.gas[0], self.gas[1], self.pnt)
+            self.g0 = self.gases[3]
+            self.g1 = self.gases[4]
+            self.data.data = self.gen_data()
         else:
             raise Exception
 
@@ -285,11 +292,12 @@ class Dashboard():
     # Set up pressure slider and callback
 
     def pressure_callback(self, attrname, old, new):
-        self.data.data = self.gen_data(
-            self.gas[0], self.gas[1], self.slider.value - 1)
+        self.pressure = self.slider.value - 1
+        self.data.data = self.gen_data()
         sel = self.data.selected.indices
         if sel:
-            self.errors.data = self.gen_error(sel[0], self.slider.value - 1)
+            self.details.text = self.gen_details(sel[0])
+            self.errors.data = self.gen_error(sel[0])
 
     # #########################################################################
     # Callback for selection
@@ -300,7 +308,7 @@ class Dashboard():
             # The user has selected a point
 
             # Display error points:
-            self.errors.data = self.gen_error(new[0], self.pnt)
+            self.errors.data = self.gen_error(new[0])
 
             # Display layout
             self.dash_layout.children.append(self.material_detail)
@@ -315,7 +323,7 @@ class Dashboard():
         else:
             Thread(target=self.gen_isos, args=[None]).start()
             # dash_layout.children.remove(material_detail)
-            self.errors.data = self.gen_error(None, self.pnt)
+            self.errors.data = self.gen_error(None)
 
 
 dash = Dashboard()
