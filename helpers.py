@@ -45,9 +45,10 @@ def load_data():
     return data
 
 
-def load_isotherm(id):
+def load_local_isotherm(filename):
     """Load a particular isotherm."""
-    path = join(dirname(__file__), 'data', 'isotherms', 'id.json')
+    path = join(dirname(__file__), 'data', 'isotherms',
+                '{0}.json'.format(filename))
     with open(path) as file:
         isotherm = pygaps.isotherm_from_json(file.read())
     return isotherm
@@ -58,8 +59,16 @@ def load_nist_isotherm(filename):
 
     url = r"https://adsorption.nist.gov/isodb/api/isotherm/{0}".format(
         filename)
-    r = requests.get(url)
 
-    # TODO: Need to fail gracefully
+    try:
+        r = requests.get(url, timeout=0.5)
+
+    except requests.exceptions.Timeout:
+        print('Connection timeout')
+        return None
+
+    except requests.exceptions.ConnectionError:
+        print('Connection error')
+        return None
 
     return pygaps.isotherm_from_json(r.text, fmt="NIST")

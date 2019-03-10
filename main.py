@@ -17,10 +17,8 @@ from helpers import load_data, load_nist_isotherm, intersect
 
 
 class Dashboard():
-    def __init__(self):
 
-        # Save curdoc() to make sure all threads see the same document.
-        self.doc = curdoc()
+    def __init__(self):
 
         self.data_dict = load_data()
 
@@ -30,6 +28,8 @@ class Dashboard():
         self.gas = [self.gases[0], self.gases[1]]
         self.pnt = 0
 
+        # Bokeh specific data generation
+        self.doc = curdoc()  # Save curdoc().
         self.data = ColumnDataSource(data=self.gen_data(
             self.gas[0], self.gas[1], self.pnt))
         self.data.selected.on_change('indices', self.selection_callback)
@@ -243,9 +243,11 @@ class Dashboard():
             for iso in isos:
                 parsed = load_nist_isotherm(iso)
 
-                # but update the document from callback
-                self.doc.add_next_tick_callback(
-                    partial(self.iso_update, f=fig, x=parsed.pressure(), y=parsed.loading()))
+                # update the document from callback
+                if parsed:
+                    self.doc.add_next_tick_callback(
+                        partial(self.iso_update, f=fig,
+                                x=parsed.pressure(), y=parsed.loading()))
 
     # #########################################################################
     # Update
