@@ -1,40 +1,30 @@
-from functools import partial
-from random import random
-from threading import Thread
-import time
+from datetime import date
+from bokeh.io import curdoc
+from random import randint
 
+from bokeh.plotting import figure
+from bokeh.io import output_file, show
+from bokeh.layouts import widgetbox, column
 from bokeh.models import ColumnDataSource
-from bokeh.plotting import curdoc, figure
+from bokeh.models.widgets import DataTable, DateFormatter, TableColumn
 
-from tornado import gen
+output_file("data_table.html")
 
-# this must only be modified from a Bokeh session callback
-source = ColumnDataSource(data=dict(x=[0], y=[0]))
+data = dict(
+    dates=[date(2014, 3, i+1) for i in range(10)],
+    xs=[randint(0, 100) for i in range(10)],
+    ys=[randint(0, 100) for i in range(10)],
+)
+source = ColumnDataSource(data)
 
-# This is important! Save curdoc() to make sure all threads
-# see the same document.
-doc = curdoc()
+fig = figure(plot_width=500, plot_height=500)
+glyphs = fig.circle('xs', 'ys', source=source, size=10)
 
+columns = [
+    TableColumn(field="dates", title="Date", formatter=DateFormatter()),
+    TableColumn(field="xs", title="xs"),
+    TableColumn(field="ys", title="ys"),
+]
+data_table = DataTable(source=source, columns=columns, width=400, height=280)
 
-@gen.coroutine
-def update(x, y):
-    source.stream(dict(x=[x], y=[y]))
-
-
-def blocking_task():
-    while True:
-        # do some blocking computation
-        time.sleep(0.1)
-        x, y = random(), random()
-
-        # but update the document from callback
-        doc.add_next_tick_callback(partial(update, x=x, y=y))
-
-
-p = figure(x_range=[0, 1], y_range=[0, 1])
-l = p.circle(x='x', y='y', source=source)
-
-doc.add_root(p)
-
-thread = Thread(target=blocking_task)
-thread.start()
+curdoc().add_root(column(fig, data_table))
