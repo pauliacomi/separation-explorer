@@ -1,15 +1,21 @@
+import pygaps
+import requests
 import json
 from os.path import dirname, join
 from pathlib import Path
 
-import requests
+from jinja2 import Environment, FileSystemLoader
 
-import pygaps
+j2_env = Environment(loader=FileSystemLoader(
+    join(dirname(__file__), 'templates')))
+
 
 TOOLS = "pan,wheel_zoom,tap,reset"
 
 TOOLTIP = Path(dirname(__file__), 'templates', 'tooltip.html').read_text()
-DETAILS = Path(dirname(__file__), 'templates', 'mat_details.html').read_text()
+DETAILS = j2_env.get_template('mat_details.html')
+
+LINK = r"https://adsorption.nist.gov/isodb/index.php?DOI=10.1002/adma.201400428#biblio"
 
 
 def intersect(a, b):
@@ -36,7 +42,9 @@ def load_local_isotherm(filename):
 def load_nist_isotherm(filename):
     """Load an isotherm from NIST ISODB."""
 
-    url = r"https://adsorption.nist.gov/isodb/api/isotherm/{0}".format(
+    return load_local_isotherm(filename)
+
+    url = r"https://adsorption.nist.gov/isodb/api/isotherm/{0}.json".format(
         filename)
 
     try:
@@ -44,10 +52,10 @@ def load_nist_isotherm(filename):
 
     except requests.exceptions.Timeout:
         print('Connection timeout')
-        return None
+        return load_local_isotherm(filename)
 
     except requests.exceptions.ConnectionError:
         print('Connection error')
-        return None
+        return load_local_isotherm(filename)
 
     return pygaps.isotherm_from_json(r.text, fmt="NIST")

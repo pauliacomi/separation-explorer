@@ -1,11 +1,17 @@
 from bokeh.plotting import figure
 from bokeh.transform import linear_cmap
 from bokeh.layouts import row, column, gridplot, layout
-from bokeh.models import Circle, ColorBar
+from bokeh.models import Circle, ColorBar, HoverTool
 from bokeh.models import ColumnDataSource, RadioButtonGroup, Slider, Div
 from bokeh.io import curdoc
 from bokeh.layouts import widgetbox
 from bokeh.palettes import Spectral10 as palette
+from bokeh.palettes import Category10
+import itertools
+
+def color_gen():
+    yield from itertools.cycle(Category10[10])
+iso_color = color_gen()
 
 from functools import partial
 from threading import Thread
@@ -48,7 +54,8 @@ class Dashboard():
         self.top_graphs()
 
         # Pressure slider
-        self.slider = Slider(title="Pressure", value=1, start=1, end=3, step=1)
+        self.slider = Slider(title="Pressure", value=1,
+                             start=1, end=40, step=1)
         self.slider.on_change('value', self.pressure_callback)
 
         # Details text
@@ -58,10 +65,6 @@ class Dashboard():
         self.p_g1iso = None
         self.p_g2iso = None
         self.bottom_graphs()
-
-        # Layout
-        self.material_detail = row(
-            [self.details, gridplot([[self.p_g1iso, self.p_g2iso]])])
 
         self.dash_layout = layout([
             [self.s_type],
@@ -81,31 +84,36 @@ class Dashboard():
         l_width = 500
 
         # create a new plot and add a renderer
-        self.p_loading = figure(tools=TOOLS, tooltips=TOOLTIP.format(0),
+        self.p_loading = figure(tools=TOOLS,
                                 active_scroll="wheel_zoom",
                                 x_range=(0, 12), y_range=(0, 12),
                                 plot_width=l_width, plot_height=500,
                                 title='Amount adsorbed')
 
         # create another new plot and add a renderer
-        self.p_henry = figure(tools=TOOLS, tooltips=TOOLTIP.format(1),
+        self.p_henry = figure(tools=TOOLS,
                               active_scroll="wheel_zoom",
                               x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
                               plot_width=500, plot_height=500,
                               y_axis_type="log", x_axis_type="log",
                               title='Initial Henry constant')
 
+        self.p_loading.add_tools(
+            HoverTool(names=["datal", "datar"], tooltips=TOOLTIP.format(0)))
+        self.p_henry.add_tools(
+            HoverTool(names=["datal", "datar"], tooltips=TOOLTIP.format(1)))
+
         # Data
         rendl = self.p_loading.circle('x0', 'y0', source=self.data, size=10,
-                                      line_color=mapper0, color=mapper0)
+                                      line_color=mapper0, color=mapper0, name="datal")
         rendr = self.p_henry.circle('x1', 'y1', source=self.data, size=10,
-                                    line_color=mapper1, color=mapper1)
+                                    line_color=mapper1, color=mapper1, name="datar")
 
         # Errors
-        errs = self.p_loading.segment('x00', 'y00', 'x01', 'y01', source=self.errors,
-                                      color="black", line_width=2)
-        errs = self.p_henry.segment('x10', 'y10', 'x11', 'y11', source=self.errors,
-                                    color="black", line_width=2)
+        errsl = self.p_loading.segment('x00', 'y00', 'x01', 'y01', source=self.errors,
+                                       color="black", line_width=2)
+        errsr = self.p_henry.segment('x10', 'y10', 'x11', 'y11', source=self.errors,
+                                     color="black", line_width=2)
 
         # Colorbars
         color_bar0 = ColorBar(
@@ -147,13 +155,17 @@ class Dashboard():
                               plot_width=400, plot_height=400,
                               title='Isotherms 2')
 
+        self.material_detail = row(
+            [self.details, gridplot([[self.p_g1iso, self.p_g2iso]])])
+
     # #########################################################################
     # Data generator
 
     def gen_data(self):
 
-        common = intersect([a for a in self.data_dict[self.g0]],
-                           [a for a in self.data_dict[self.g1]])
+        common = [mat for mat in self.data_dict if
+                  self.data_dict[mat].get(self.g0, False) and
+                  self.data_dict[mat].get(self.g1, False)]
 
         dd = self.data_dict
         g0 = self.g0
@@ -162,12 +174,12 @@ class Dashboard():
 
         return dict(
             labels=common,
-            x0=[dd[g0][mat]['mL'][p] for mat in common],
-            y0=[dd[g1][mat]['mL'][p] for mat in common],
-            x1=[dd[g0][mat]['mKh'] for mat in common],
-            y1=[dd[g1][mat]['mKh'] for mat in common],
-            z0=[dd[g0][mat]['lL'][p] + dd[g1][mat]['lL'][p] for mat in common],
-            z1=[dd[g0][mat]['lKh'] + dd[g1][mat]['lKh'] for mat in common],
+            x0=[dd[mat][g0]['mL'][p] for mat in common],
+            y0=[dd[mat][g1]['mL'][p] for mat in common],
+            x1=[dd[mat][g0]['mKh'] for mat in common],
+            y1=[dd[mat][g1]['mKh'] for mat in common],
+            z0=[dd[mat][g0]['lL'][p] + dd[mat][g1]['lL'][p] for mat in common],
+            z1=[dd[mat][g0]['lKh'] + dd[mat][g1]['lKh'] for mat in common],
         )
 
     # #########################################################################
@@ -186,14 +198,15 @@ class Dashboard():
             mat = self.data.data['labels'][index]
             x0 = self.data.data['x0'][index]
             y0 = self.data.data['y0'][index]
-            xe00 = self.data_dict[self.g0][mat]['eL'][p]
-            xe01 = self.data_dict[self.g1][mat]['eL'][p]
+            xe00 = self.data_dict[mat][self.g0]['eL'][p]
+            xe01 = self.data_dict[mat][self.g1]['eL'][p]
             x1 = self.data.data['x1'][index]
             y1 = self.data.data['y1'][index]
-            xe10 = self.data_dict[self.g0][mat]['eKh']
-            xe11 = self.data_dict[self.g1][mat]['eKh']
+            xe10 = self.data_dict[mat][self.g0]['eKh']
+            xe11 = self.data_dict[mat][self.g1]['eKh']
 
             e_dict = dict(
+                labels=[mat, mat],
                 x00=[x0 - xe00, x0],
                 y00=[y0, y0-xe01],
                 x01=[x0 + xe00, x0],
@@ -220,12 +233,14 @@ class Dashboard():
                 'gas1': self.g1,
                 'gas0_load': self.data.data['x0'][index],
                 'gas1_load': self.data.data['y0'][index],
-                'gas0_hk': self.data_dict[self.g0][mat]['mKh'],
-                'gas1_hk': self.data_dict[self.g1][mat]['mKh'],
-                'gas0_iso': len(self.data_dict[self.g0][mat]['isos']),
-                'gas1_iso': len(self.data_dict[self.g1][mat]['isos']),
+                'gas0_hk': self.data_dict[mat][self.g0]['mKh'],
+                'gas1_hk': self.data_dict[mat][self.g1]['mKh'],
+                'gas0_niso': len(self.data_dict[mat][self.g0]['iso']),
+                'gas1_niso': len(self.data_dict[mat][self.g1]['iso']),
+                'gas0_iso': self.data_dict[mat][self.g0]['iso'],
+                'gas1_iso': self.data_dict[mat][self.g1]['iso'],
             }
-            return DETAILS.format(**data)
+            return DETAILS.render(**data)
 
     # #########################################################################
     # Isotherms
@@ -239,10 +254,10 @@ class Dashboard():
             mat = self.data.data['labels'][index]
 
             if which == 'right':
-                isos = self.data_dict[self.g0][mat]['isos']
+                isos = self.data_dict[mat][self.g0]['iso']
                 fig = self.p_g1iso
             elif which == 'left':
-                isos = self.data_dict[self.g1][mat]['isos']
+                isos = self.data_dict[mat][self.g1]['iso']
                 fig = self.p_g2iso
             else:
                 raise Exception
@@ -254,13 +269,13 @@ class Dashboard():
                 if parsed:
                     self.doc.add_next_tick_callback(
                         partial(self.iso_update, f=fig,
-                                x=parsed.pressure(), y=parsed.loading()))
+                                x=parsed.pressure(), y=parsed.loading(), color=iso_color))
 
     # #########################################################################
     # Update
     @gen.coroutine
-    def iso_update(self, f, x, y):
-        f.line(x=x, y=y)
+    def iso_update(self, f, **kwargs):
+        f.line(**kwargs)
 
     # #########################################################################
     # Selection update
@@ -288,6 +303,10 @@ class Dashboard():
         # Update labels
         self.top_graph_label()
 
+        # Update bottom
+        self.dash_layout.children.remove(self.material_detail)
+        self.bottom_graphs()
+
     # #########################################################################
     # Set up pressure slider and callback
 
@@ -310,8 +329,14 @@ class Dashboard():
             # Display error points:
             self.errors.data = self.gen_error(new[0])
 
-            # Display layout
-            self.dash_layout.children.append(self.material_detail)
+            if len(old) == 0:
+                # Display layout
+                self.dash_layout.children.append(self.material_detail)
+            else:
+                # Reset layout
+                self.dash_layout.children.remove(self.material_detail)
+                self.bottom_graphs()
+                self.dash_layout.children.append(self.material_detail)
 
             # Generate material details
             self.details.text = self.gen_details(new[0])
@@ -322,7 +347,8 @@ class Dashboard():
 
         else:
             Thread(target=self.gen_isos, args=[None]).start()
-            # dash_layout.children.remove(material_detail)
+            self.dash_layout.children.remove(self.material_detail)
+            self.bottom_graphs()
             self.errors.data = self.gen_error(None)
 
 
