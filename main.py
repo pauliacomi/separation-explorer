@@ -294,8 +294,8 @@ class Dashboard():
             self.g1 = self.gases[2]
             self.data.data = self.gen_data()
         elif index == 2:
-            self.g0 = self.gases[3]
-            self.g1 = self.gases[4]
+            self.g0 = self.gases[4]
+            self.g1 = self.gases[3]
             self.data.data = self.gen_data()
         else:
             raise Exception
