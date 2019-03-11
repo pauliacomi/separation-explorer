@@ -7,33 +7,50 @@ from bokeh.layouts import widgetbox, column
 from bokeh.models import ColumnDataSource
 from bokeh.models.widgets import DataTable, TableColumn, Button
 
+import numpy as np
 
-def data():
-    return dict(
-        dates=[date(2014, 3, i+1) for i in range(10)],
-        xs=[randint(0, 100) for i in range(10)],
-        ys=[randint(0, 100) for i in range(10)],
-    )
+from bokeh.io import show
+from bokeh.layouts import widgetbox
+from bokeh.models.widgets import CheckboxGroup
+from bokeh.models import CustomJS, ColumnDataSource
+from bokeh.layouts import column, row
+
+t = np.arange(0.0, 2.0, 0.01)
+s = np.sin(3*np.pi*t)
+c = np.cos(3*np.pi*t)
+
+source = ColumnDataSource(data=dict(t=t, s=s, c=c))
+
+plot = figure(plot_width=400, plot_height=400)
+a = plot.line('t', 's', source=source, line_width=3,
+              line_alpha=0.6, line_color='blue')
+b = plot.line('t', 'c', source=source, line_width=3,
+              line_alpha=0.6, line_color='red')
+
+checkbox = CheckboxGroup(labels=["Cosinus", "Sinus"], active=[0, 1])
+
+checkbox.callback = CustomJS(args=dict(line0=a, line1=b), code="""
+    //console.log(cb_obj.active);
+    line0.visible = false;
+    line1.visible = false;
+    for (i in cb_obj.active) {
+        //console.log(cb_obj.active[i]);
+        if (cb_obj.active[i] == 0) {
+            line0.visible = true;
+        } else if (cb_obj.active[i] == 1) {
+            line1.visible = true;
+        }
+        <script>
+            function change_on_hover(name, idx, value) {
+                var ds = Bokeh.documents[0].get_model_by_name('my-data-source');
+                ds.data[name][idx] = value;
+                ds.change.emit();
+            }
+        </script>
+    }
+""")
+
+layout = row(plot, widgetbox(checkbox))
 
 
-source = ColumnDataSource(data())
-
-fig = figure(plot_width=500, plot_height=500)
-glyphs = fig.circle('xs', 'ys', source=source, size=10)
-
-columns = [
-    TableColumn(field="dates", title="Date"),
-    TableColumn(field="xs", title="xs"),
-    TableColumn(field="ys", title="ys"),
-]
-data_table = DataTable(source=source, columns=columns, width=400, height=280)
-
-
-def recreate_data():
-    source.data = data()
-
-
-bt = Button(label="Click")
-bt.on_click(recreate_data)
-
-curdoc().add_root(column(fig, data_table, widgetbox(bt)))
+curdoc().add_root(layout)

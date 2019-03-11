@@ -24,9 +24,8 @@
   <body>
     {% block inner_body %}
       {% block contents %}
-        <div style="width: 800px; height: 100px;">
+        <div style="width: 1000px; height: 100px;">
             <h1>Material explorer for separations</h1>
-    
             Select the separation dataset by clicking on the buttons below.
             Hover over a point to display a tool-tip with material information,
             click it to focus on a particular material. The loading graph shows 
@@ -44,5 +43,17 @@
       {{ plot_script | indent(8) }}
     {% endblock %}
   </body>
+  <script type="text/javascript">
+      function change_on_hover(event) {
+      var ds = Bokeh.documents[0].get_model_by_name(event.target.id);
+      if (event.type == 'mouseenter') {
+          ds.attributes.glyph.attributes.line_alpha = 0;
+        }
+      if (event.type == 'mouseleave') {
+          ds.attributes.glyph.attributes.line_alpha = 1;
+      }
+      ds.change.emit();
+    }
+  </script>
   {% endblock %}
 </html>

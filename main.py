@@ -9,9 +9,6 @@ from bokeh.palettes import Spectral10 as palette
 from bokeh.palettes import Category10
 import itertools
 
-def color_gen():
-    yield from itertools.cycle(Category10[10])
-iso_color = color_gen()
 
 from functools import partial
 from threading import Thread
@@ -62,14 +59,14 @@ class Dashboard():
         self.details = Div(text=self.gen_details(), width=400, height=400)
 
         # Isotherms
+        self.p_g0iso = None
         self.p_g1iso = None
-        self.p_g2iso = None
         self.bottom_graphs()
 
         self.dash_layout = layout([
             [self.s_type],
             gridplot([[self.p_loading, self.p_henry]]),
-            [widgetbox(self.slider)],
+            [widgetbox(children=[self.slider], sizing_mode='scale_width')],
         ])
         self.doc.title = "Graphs"
 
@@ -86,9 +83,8 @@ class Dashboard():
         # create a new plot and add a renderer
         self.p_loading = figure(tools=TOOLS,
                                 active_scroll="wheel_zoom",
-                                x_range=(0, 12), y_range=(0, 12),
                                 plot_width=l_width, plot_height=500,
-                                title='Amount adsorbed')
+                                title='Uptake at selected pressure')
 
         # create another new plot and add a renderer
         self.p_henry = figure(tools=TOOLS,
@@ -148,15 +144,22 @@ class Dashboard():
             low=3, high=90)
 
     def bottom_graphs(self):
+        self.p_g0iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
+                              plot_width=400, plot_height=400,
+                              title='Isotherms {0}'.format(self.g0))
         self.p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
                               plot_width=400, plot_height=400,
-                              title='Isotherms 1')
-        self.p_g2iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                              plot_width=400, plot_height=400,
-                              title='Isotherms 2')
+                              title='Isotherms {0}'.format(self.g1))
+
+        self.p_g0iso.xaxis.axis_label = 'Pressure (bar)'
+        self.p_g0iso.yaxis.axis_label = 'Uptake (mmol/g)'
+        self.p_g1iso.xaxis.axis_label = 'Pressure (bar)'
+        self.p_g1iso.yaxis.axis_label = 'Uptake (mmol/g)'
+
+        self.iso_color = itertools.cycle(Category10[10])
 
         self.material_detail = row(
-            [self.details, gridplot([[self.p_g1iso, self.p_g2iso]])])
+            [self.details, gridplot([[self.p_g0iso, self.p_g1iso]])])
 
     # #########################################################################
     # Data generator
@@ -255,10 +258,10 @@ class Dashboard():
 
             if which == 'right':
                 isos = self.data_dict[mat][self.g0]['iso']
-                fig = self.p_g1iso
+                fig = self.p_g0iso
             elif which == 'left':
                 isos = self.data_dict[mat][self.g1]['iso']
-                fig = self.p_g2iso
+                fig = self.p_g1iso
             else:
                 raise Exception
 
@@ -269,7 +272,8 @@ class Dashboard():
                 if parsed:
                     self.doc.add_next_tick_callback(
                         partial(self.iso_update, f=fig,
-                                x=parsed.pressure(), y=parsed.loading(), color=iso_color))
+                                x=parsed.pressure(), y=parsed.loading(),
+                                color=next(self.iso_color), name=parsed.filename))
 
     # #########################################################################
     # Update
@@ -283,7 +287,10 @@ class Dashboard():
     def s_type_callback(self, index):
 
         # Reset any selected materials
-        self.data.selected.update(indices=[])
+        sel = self.data.selected.indices
+        if sel:
+            self.data.selected.update(indices=[])
+            self.dash_layout.children.remove(self.material_detail)
 
         if index == 0:
             self.g0 = self.gases[0]
@@ -304,7 +311,6 @@ class Dashboard():
         self.top_graph_label()
 
         # Update bottom
-        self.dash_layout.children.remove(self.material_detail)
         self.bottom_graphs()
 
     # #########################################################################

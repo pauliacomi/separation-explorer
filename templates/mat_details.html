@@ -33,18 +33,15 @@
 <div>
     <div style="display: flex;">
         <div style="flex: 50%; overflow: scroll;">
-            <ul>
-                {% for iso in gas0_iso %}
-                <li>{{ iso }}</li>
-                {% endfor %}
-            </ul>
-        </div>
+            {% for iso in gas0_iso %}
+            <div id="{{ iso }}" onmouseenter="change_on_hover(event)" onmouseleave="change_on_hover(event)">
+                <a href=https://adsorption.nist.gov/isodb/index.php?DOI={{ iso }}#biblio>{{ iso }}</a> 
+            </div>
+            {% endfor %} </div> 
         <div style="flex: 50%; overflow: scroll;">
-            <ul>
-                {% for iso in gas1_iso %}
-                <li>{{ iso }}</li>
-                {% endfor %}
-            </ul>
+            {% for iso in gas1_iso %}
+                <div>{{ iso }}</div>
+            {% endfor %}
         </div>
     </div>
 </div>
