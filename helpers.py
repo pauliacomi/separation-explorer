@@ -2,17 +2,16 @@ import pygaps
 import requests
 import json
 from os.path import dirname, join
-from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
-j2_env = Environment(loader=FileSystemLoader(
-    join(dirname(__file__), 'templates')))
+j2_env = Environment(
+    loader=FileSystemLoader(join(dirname(__file__), 'templates')))
 
 
 TOOLS = "pan,wheel_zoom,tap,reset"
 
-TOOLTIP = Path(dirname(__file__), 'templates', 'tooltip.html').read_text()
+TOOLTIP = j2_env.get_template('tooltip.html')
 DETAILS = j2_env.get_template('mat_details.html')
 
 LINK = r"https://adsorption.nist.gov/isodb/index.php?DOI=10.1002/adma.201400428#biblio"

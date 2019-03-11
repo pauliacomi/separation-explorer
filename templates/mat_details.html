@@ -1,16 +1,16 @@
 <div>
-    <h2>Material: {{ material }}</h2>
+    <h2>{{ material }}</h2>
 </div>
 <div>
     <table style="width: 100%;">
         <tbody>
             <tr>
                 <td>&nbsp;</td>
-                <td>{{ gas0 | capitalize }}</td>
-                <td>{{ gas1 | capitalize }}</td>
+                <td>{{ gas0 | title }}</td>
+                <td>{{ gas1 | title }}</td>
             </tr>
             <tr>
-                <td>Loading (selected)</td>
+                <td>Selected loading</td>
                 <td>{{ gas0_load | round(3) }}</td>
                 <td>{{ gas1_load | round(3) }}</td>
             </tr>

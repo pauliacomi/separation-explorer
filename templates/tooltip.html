@@ -1,13 +1,24 @@
 <div>
     <div>
-        <span style="font-size: 17px; font-weight: bold;">@labels</span>
+        <span class="label-title">@labels</span>
     </div>
-    <div>
-        <span style="font-size: 10px;">Coord (x, y):</span>
-        <span style="font-size: 10px; color: #696;">(@x{0}, @y{0})</span>
-    </div>
-    <div>
-        <span style="font-size: 10px;">Isotherms:</span>
-        <span style="font-size: 10px; color: #696;">@z{0}</span>
-    </div>
+
+    <table>
+        <tr>
+            <td class="label-text">Coord (x, y):</td>
+            <td class="label-text label-value">(@x{{ p }}, @y{{ p }})</td>
+        </tr>
+        <tr>
+            <td class="label-text">Total isotherms:</td>
+            <td class="label-value">@z{{ p }}</td>
+        </tr>
+        <tr>
+            <td class="label-text">{{ gas0 | title }} isotherms:</td>
+            <td class="label-value">@z{{ 0 }}x</td>
+        </tr>
+        <tr>
+            <td class="label-text">{{ gas1 | title }} isotherms:</td>
+            <td class="label-value">@z{{ 0 }}y</td>
+        </tr>
+    </table>
 </div>

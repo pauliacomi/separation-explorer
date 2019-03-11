@@ -42,7 +42,7 @@ class Dashboard():
 
         # Radio selections
         self.s_type = RadioButtonGroup(
-            labels=["CO2 / N2", "CO2 / CH4", "C3H6 / C2H4"], active=0)
+            labels=["CO2 / N2", "CO2 / CH4", "C2H6 / C2H4"], active=0)
         self.s_type.on_click(self.s_type_callback)
 
         # Top graphs
@@ -51,12 +51,12 @@ class Dashboard():
         self.top_graphs()
 
         # Pressure slider
-        self.slider = Slider(title="Pressure", value=1,
-                             start=1, end=40, step=1)
+        self.slider = Slider(title="Pressure", value=0.5,
+                             start=0.5, end=20, step=0.5)
         self.slider.on_change('value', self.pressure_callback)
 
         # Details text
-        self.details = Div(text=self.gen_details(), width=400, height=400)
+        self.details = Div(text="", width=400, height=400)
 
         # Isotherms
         self.p_g0iso = None
@@ -64,10 +64,10 @@ class Dashboard():
         self.bottom_graphs()
 
         self.dash_layout = layout([
-            [self.s_type],
-            gridplot([[self.p_loading, self.p_henry]]),
+            [widgetbox(self.s_type)],
+            [gridplot([[self.p_henry, self.p_loading]])],
             [widgetbox(children=[self.slider], sizing_mode='scale_width')],
-        ])
+        ], sizing_mode='scale_width')
         self.doc.title = "Graphs"
 
     def show_dash(self):
@@ -78,26 +78,30 @@ class Dashboard():
         mapper0 = self.mapper(0)
         mapper1 = self.mapper(1)
 
-        l_width = 500
+        plot_side_size = 500
 
         # create a new plot and add a renderer
         self.p_loading = figure(tools=TOOLS,
                                 active_scroll="wheel_zoom",
-                                plot_width=l_width, plot_height=500,
+                                plot_width=plot_side_size, plot_height=plot_side_size,
                                 title='Uptake at selected pressure')
 
         # create another new plot and add a renderer
         self.p_henry = figure(tools=TOOLS,
                               active_scroll="wheel_zoom",
                               x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
-                              plot_width=500, plot_height=500,
+                              plot_width=plot_side_size, plot_height=plot_side_size,
                               y_axis_type="log", x_axis_type="log",
                               title='Initial Henry constant')
 
         self.p_loading.add_tools(
-            HoverTool(names=["datal", "datar"], tooltips=TOOLTIP.format(0)))
+            HoverTool(names=["datal", "datar"],
+                      tooltips=TOOLTIP.render(p=0, gas0=self.g0, gas1=self.g1))
+        )
         self.p_henry.add_tools(
-            HoverTool(names=["datal", "datar"], tooltips=TOOLTIP.format(1)))
+            HoverTool(names=["datal", "datar"],
+                      tooltips=TOOLTIP.render(p=1, gas0=self.g0, gas1=self.g1))
+        )
 
         # Data
         rendl = self.p_loading.circle('x0', 'y0', source=self.data, size=10,
@@ -146,7 +150,7 @@ class Dashboard():
     def bottom_graphs(self):
         self.p_g0iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
                               plot_width=400, plot_height=400,
-                              title='Isotherms {0}'.format(self.g0))
+                              title='Isotherms %s'.format(self.g0))
         self.p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
                               plot_width=400, plot_height=400,
                               title='Isotherms {0}'.format(self.g1))
@@ -175,14 +179,23 @@ class Dashboard():
         g1 = self.g1
         p = self.pressure
 
+        z0x = [dd[mat][g0]['lL'][p] for mat in common]
+        z0y = [dd[mat][g1]['lL'][p] for mat in common]
+        z1x = [dd[mat][g0]['lKh'] for mat in common]
+        z1y = [dd[mat][g1]['lKh'] for mat in common]
+
         return dict(
             labels=common,
             x0=[dd[mat][g0]['mL'][p] for mat in common],
             y0=[dd[mat][g1]['mL'][p] for mat in common],
             x1=[dd[mat][g0]['mKh'] for mat in common],
             y1=[dd[mat][g1]['mKh'] for mat in common],
-            z0=[dd[mat][g0]['lL'][p] + dd[mat][g1]['lL'][p] for mat in common],
-            z1=[dd[mat][g0]['lKh'] + dd[mat][g1]['lKh'] for mat in common],
+            z0x=z0x,
+            z0y=z0y,
+            z1x=z1x,
+            z1y=z1y,
+            z0=[z0x[a] + z0y[a] for a in range(len(z0x))],
+            z1=[z1x[a] + z1y[a] for a in range(len(z1x))],
         )
 
     # #########################################################################
@@ -317,7 +330,7 @@ class Dashboard():
     # Set up pressure slider and callback
 
     def pressure_callback(self, attrname, old, new):
-        self.pressure = self.slider.value - 1
+        self.pressure = int(self.slider.value * 2) - 1
         self.data.data = self.gen_data()
         sel = self.data.selected.indices
         if sel:

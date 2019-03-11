@@ -1,59 +1,27 @@
-{% from macros import embed %}
+{% extends base %}
 
-<!DOCTYPE html>
-<html lang="en">
-  {% block head %}
-  <head>
-    {% block inner_head %}
-      <meta charset="utf-8">
-      <title>{% block title %}{{ title | e if title else "Bokeh Plot" }}{% endblock %}</title>
-      {% block preamble %}{% endblock %}
-      {% block resources %}
-        {% block css_resources %}
-          {{ bokeh_css | indent(8) if bokeh_css }}
-        {% endblock %}
-        {% block js_resources %}
-          {{ bokeh_js | indent(8) if bokeh_js }}
-        {% endblock %}
-      {% endblock %}
-      {% block postamble %}{% endblock %}
-    {% endblock %}
-  </head>
-  {% endblock %}
-  {% block body %}
-  <body>
-    {% block inner_body %}
-      {% block contents %}
-        <div style="width: 1000px; height: 100px;">
-            <h1>Material explorer for separations</h1>
-            Select the separation dataset by clicking on the buttons below.
-            Hover over a point to display a tool-tip with material information,
-            click it to focus on a particular material. The loading graph shows 
-            the amount adsorbed at the pressure set by the slider below it.
-        </div>
-        {% for doc in docs %}
-          {{ embed(doc) if doc.elementid }}
-          {% for root in doc.roots %}
-            {% block root scoped %}
-              {{ embed(root) | indent(10) }}
-            {% endblock %}
-          {% endfor %}
-        {% endfor %}
-      {% endblock %}
-      {{ plot_script | indent(8) }}
-    {% endblock %}
-  </body>
+{% block title %}Material explorer for separations{% endblock %}
+
+{% block postamble %}
+  <style>
+    {% include 'css/main.css' %}
+  </style>
+  
   <script type="text/javascript">
-      function change_on_hover(event) {
-      var ds = Bokeh.documents[0].get_model_by_name(event.target.id);
-      if (event.type == 'mouseenter') {
-          ds.attributes.glyph.attributes.line_alpha = 0;
-        }
-      if (event.type == 'mouseleave') {
-          ds.attributes.glyph.attributes.line_alpha = 1;
-      }
-      ds.change.emit();
-    }
+    {% include 'js/hover.js' %}
   </script>
-  {% endblock %}
-</html>
+{% endblock %}
+
+{% block contents %}
+  <div class="content">
+    <h1>Material explorer for separations</h1>
+
+    <p>Select the separation dataset by clicking on the buttons below.
+      Hover over a point to display a tool-tip with material information,
+      click it to focus on a particular material. The loading graph shows 
+      the amount adsorbed at the pressure set by the slider below it.</p>
+
+    {{ super() }}
+
+  </div>
+{% endblock %}
