@@ -38,6 +38,8 @@ class Dashboard():
         # Bokeh specific data generation
         self.data = ColumnDataSource(data=self.gen_data())
         self.errors = ColumnDataSource(data=self.gen_error(None))
+        self.s_g0iso = ColumnDataSource(data=self.gen_isos())
+        self.s_g1iso = ColumnDataSource(data=self.gen_isos())
 
         # Data callback
         self.data.selected.on_change('indices', self.selection_callback)
@@ -64,8 +66,6 @@ class Dashboard():
         # Isotherms
         self.g0iso = []
         self.g1iso = []
-        self.s_g0iso = ColumnDataSource(data=self.gen_isos())
-        self.s_g1iso = ColumnDataSource(data=self.gen_isos())
         self.p_g0iso = None
         self.p_g1iso = None
         self.bottom_graphs()
