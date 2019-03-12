@@ -1,0 +1,44 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Separation explorer</title>
+    <style>
+        {% include 'css/main.css' %}
+    </style>
+
+    <script type="text/javascript">
+        {% include 'js/hover.js' %}
+    </script>
+</head>
+
+<body>
+    <div class="content">
+        <h1>Material explorer for separations</h1>
+
+        <p>
+            Select the separation dataset by clicking on the buttons below.
+            Values are calculated from all available isotherms of a material
+            from the NIST ISODB. Color of the points is determined by number
+            of available isotherms.
+        </p>
+
+        <p>
+            The loading graph shows the amount adsorbed at the pressure set by the slider below it.
+            Change the slider value to observe correlation at different pressures.
+            Graph only shows materials where the loading can be calculated.
+        </p>
+
+        <p>
+            Hover over a point to display the material name.
+            If clicked, both graphs highlight the adsorbent and display the standard deviation
+            of the calculation. Graphs below are populated with the material isotherms.
+        </p>
+
+        {{ script|safe }}
+    </div>
+</body>
+
+</html>
