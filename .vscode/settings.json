@@ -1,3 +1,8 @@
 {
-    "python.pythonPath": "C:\\tools\\miniconda3\\envs\\py37\\python.exe"
+    "python.pythonPath": "C:\\tools\\miniconda3\\envs\\py37\\python.exe",
+    "appService.zipIgnorePattern": [
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/0d160566-953f-4946-bc1e-5d90b2cee14a/resourceGroups/appsvc_rg_linux_centralus/providers/Microsoft.Web/sites/material-explorer",
+    "appService.deploySubpath": ""
 }
