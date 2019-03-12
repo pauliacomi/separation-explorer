@@ -5,21 +5,17 @@ from flask import Flask, render_template
 app = Flask(__name__)
 
 
-@app.route("/")
-def hello():
-    return "Hello World!"
+@app.route('/', methods=['GET'])
+def bkapp_page():
 
-# @app.route('/', methods=['GET'])
-# def bkapp_page():
+    with pull_session(url="http://localhost:5006/material-explorer") as session:
 
-#     with pull_session(url="http://localhost:5006/material-explorer") as session:
+        # generate a script to load the customized session
+        script = server_session(session_id=session.id,
+                                url='http://localhost:5006/material-explorer')
 
-#         # generate a script to load the customized session
-#         script = server_session(session_id=session.id,
-#                                 url='http://localhost:5006/material-explorer')
-
-#         # use the script in the rendered page
-#         return render_template("embed.html", script=script, template="Flask")
+        # use the script in the rendered page
+        return render_template("embed.html", script=script, template="Flask")
 
 
 if __name__ == '__main__':
