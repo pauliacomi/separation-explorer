@@ -2,7 +2,7 @@
     <h2>{{ material }}</h2>
 </div>
 <div>
-    <table style="width: 100%;">
+    <table>
         <tbody>
             <tr>
                 <td>&nbsp;</td>
@@ -34,13 +34,15 @@
     <div style="display: flex;">
         <div style="flex: 50%; overflow: scroll;">
             {% for iso in gas0_iso %}
-            <div id="{{ iso }}" onmouseenter="change_on_hover(event)" onmouseleave="change_on_hover(event)">
+            <div id="{{ iso }}">
                 <a href=https://adsorption.nist.gov/isodb/index.php?DOI={{ iso }}#biblio>{{ iso }}</a> 
             </div>
             {% endfor %} </div> 
         <div style="flex: 50%; overflow: scroll;">
             {% for iso in gas1_iso %}
-                <div>{{ iso }}</div>
+            <div id="{{ iso }}">
+                {{ iso }}
+            </div>
             {% endfor %}
         </div>
     </div>

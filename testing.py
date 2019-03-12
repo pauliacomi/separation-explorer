@@ -2,55 +2,31 @@ from datetime import date
 from random import randint
 
 from bokeh.io import curdoc
-from bokeh.plotting import figure
+from bokeh.plotting import figure, Row
 from bokeh.layouts import widgetbox, column
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, HoverTool
 from bokeh.models.widgets import DataTable, TableColumn, Button
 
 import numpy as np
 
-from bokeh.io import show
-from bokeh.layouts import widgetbox
-from bokeh.models.widgets import CheckboxGroup
-from bokeh.models import CustomJS, ColumnDataSource
-from bokeh.layouts import column, row
+p = figure()
 
-t = np.arange(0.0, 2.0, 0.01)
-s = np.sin(3*np.pi*t)
-c = np.cos(3*np.pi*t)
+a = {
+    'labels': ['10.1016j.micromeso.2013.06.023.Isotherm9'],
+    'x': [[0.00731707, 0.0121951, 0.0219512, 0.0341463, 0.0707317, 0.097561, 0.134146, 0.165854, 0.202439, 0.236585, 0.270732, 0.3, 0.334146, 0.368293, 0.395122, 0.463415, 0.534146, 0.6, 0.665854, 0.731707, 0.8, 0.865854, 0.931707, 1.00976, 1.06585]],
+    'y': [[0.313564, 0.57009, 0.769752, 0.912492, 1.34071, 1.65474, 1.88353, 2.02673, 2.14156, 2.31331, 2.42808, 2.54274, 2.60053, 2.74379, 2.8014, 2.97397, 3.0896, 3.20513, 3.34914, 3.43618, 3.55176, 3.66728, 3.72582, 3.81315, 3.92844]]
+}
 
-source = ColumnDataSource(data=dict(t=t, s=s, c=c))
 
-plot = figure(plot_width=400, plot_height=400)
-a = plot.line('t', 's', source=source, line_width=3,
-              line_alpha=0.6, line_color='blue')
-b = plot.line('t', 'c', source=source, line_width=3,
-              line_alpha=0.6, line_color='red')
+source = ColumnDataSource(data=a)
 
-checkbox = CheckboxGroup(labels=["Cosinus", "Sinus"], active=[0, 1])
+p.multi_line('x', 'y', source=source,
+             alpha=0.6, line_width=4,
+             hover_line_alpha=1.0)
 
-checkbox.callback = CustomJS(args=dict(line0=a, line1=b), code="""
-    //console.log(cb_obj.active);
-    line0.visible = false;
-    line1.visible = false;
-    for (i in cb_obj.active) {
-        //console.log(cb_obj.active[i]);
-        if (cb_obj.active[i] == 0) {
-            line0.visible = true;
-        } else if (cb_obj.active[i] == 1) {
-            line1.visible = true;
-        }
-        <script>
-            function change_on_hover(name, idx, value) {
-                var ds = Bokeh.documents[0].get_model_by_name('my-data-source');
-                ds.data[name][idx] = value;
-                ds.change.emit();
-            }
-        </script>
-    }
-""")
-
-layout = row(plot, widgetbox(checkbox))
+p.add_tools(HoverTool(show_arrow=False,
+                      line_policy='nearest'))
+layout = Row(p)
 
 
 curdoc().add_root(layout)

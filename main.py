@@ -2,6 +2,7 @@ from bokeh.plotting import figure
 from bokeh.transform import linear_cmap
 from bokeh.layouts import row, column, gridplot, layout
 from bokeh.models import Circle, ColorBar, HoverTool
+from bokeh.models.callbacks import CustomJS
 from bokeh.models import ColumnDataSource, RadioButtonGroup, Slider, Div
 from bokeh.io import curdoc
 from bokeh.layouts import widgetbox
@@ -59,6 +60,10 @@ class Dashboard():
         self.details = Div(text="", width=400, height=400)
 
         # Isotherms
+        self.g0iso = []
+        self.g1iso = []
+        self.s_g0iso = ColumnDataSource(data=self.gen_isos())
+        self.s_g1iso = ColumnDataSource(data=self.gen_isos())
         self.p_g0iso = None
         self.p_g1iso = None
         self.bottom_graphs()
@@ -148,15 +153,59 @@ class Dashboard():
             low=3, high=90)
 
     def bottom_graphs(self):
+
+        self.g0iso = []
+        self.g1iso = []
+        callback0 = CustomJS(args=dict(source=self.s_g0iso), code="""
+        var index = cb_data.index['1d'].indices
+        if (index.length == 1) {
+            var id = document.getElementById(source.data['labels'][index]);
+            id.style.backgroundColor = 'red';
+        }
+        else {
+            debugger;
+            for (var i = 0; i < source.data['labels'].length; i++) {
+                var id = document.getElementById(source.data['labels'][i]);
+                id.style.backgroundColor = '';
+            }
+        }
+        """)
+        callback1 = CustomJS(args=dict(source=self.s_g1iso), code="""
+        var index = cb_data.index['1d'].indices
+        if (index.length == 1) {
+            var id = document.getElementById(source.data['labels'][index]);
+            id.style.backgroundColor = 'red';
+        }
+        else {
+            debugger;
+            for (var i = 0; i < source.data['labels'].length; i++) {
+                var id = document.getElementById(source.data['labels'][i]);
+                id.style.backgroundColor = '';
+            }
+        }
+        """)
+
         self.p_g0iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
                               plot_width=400, plot_height=400,
-                              title='Isotherms %s'.format(self.g0))
+                              title='Isotherms {0}'.format(self.g0))
+        self.p_g0iso.multi_line('x', 'y', source=self.s_g0iso, alpha=0.6, line_width=2,
+                                hover_line_alpha=1.0)
+        self.p_g0iso.add_tools(HoverTool(show_arrow=False,
+                                         line_policy='nearest',
+                                         tooltips='@labels',
+                                         callback=callback0))
+        self.p_g0iso.xaxis.axis_label = 'Pressure (bar)'
+        self.p_g0iso.yaxis.axis_label = 'Uptake (mmol/g)'
+
         self.p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
                               plot_width=400, plot_height=400,
                               title='Isotherms {0}'.format(self.g1))
-
-        self.p_g0iso.xaxis.axis_label = 'Pressure (bar)'
-        self.p_g0iso.yaxis.axis_label = 'Uptake (mmol/g)'
+        self.p_g1iso.multi_line('x', 'y', source=self.s_g1iso, alpha=0.6, line_width=2,
+                                hover_line_alpha=1.0)
+        self.p_g1iso.add_tools(HoverTool(show_arrow=False,
+                                         line_policy='nearest',
+                                         tooltips='@labels',
+                                         callback=callback1))
         self.p_g1iso.xaxis.axis_label = 'Pressure (bar)'
         self.p_g1iso.yaxis.axis_label = 'Uptake (mmol/g)'
 
@@ -235,6 +284,26 @@ class Dashboard():
             return e_dict
 
     # #########################################################################
+    # Isotherms
+
+    def gen_isos(self, lst=None):
+
+        if lst is None:
+            return dict(labels=[], x=[], y=[])
+
+        else:
+            labels = []
+            xs = []
+            ys = []
+
+            for iso in lst:
+                labels.append(iso.filename)
+                xs.append(iso.pressure().tolist())
+                ys.append(iso.loading().tolist())
+
+            return dict(labels=labels, x=xs, y=ys)
+
+    # #########################################################################
     # Text
 
     def gen_details(self, index=None):
@@ -261,7 +330,7 @@ class Dashboard():
     # #########################################################################
     # Isotherms
 
-    def gen_isos(self, index, which=None):
+    def download_isos(self, index, which=None):
 
         if index is None:
             self.doc.add_next_tick_callback(self.bottom_graphs)
@@ -271,10 +340,12 @@ class Dashboard():
 
             if which == 'right':
                 isos = self.data_dict[mat][self.g0]['iso']
-                fig = self.p_g0iso
+                source = self.s_g0iso
+                lst = self.g0iso
             elif which == 'left':
                 isos = self.data_dict[mat][self.g1]['iso']
-                fig = self.p_g1iso
+                source = self.s_g1iso
+                lst = self.g1iso
             else:
                 raise Exception
 
@@ -283,16 +354,15 @@ class Dashboard():
 
                 # update the document from callback
                 if parsed:
+                    lst.append(parsed)
                     self.doc.add_next_tick_callback(
-                        partial(self.iso_update, f=fig,
-                                x=parsed.pressure(), y=parsed.loading(),
-                                color=next(self.iso_color), name=parsed.filename))
+                        partial(self.iso_update, source=source, lst=lst))
 
     # #########################################################################
     # Update
     @gen.coroutine
-    def iso_update(self, f, **kwargs):
-        f.line(**kwargs)
+    def iso_update(self, source, lst, **kwargs):
+        source.data = self.gen_isos(lst=lst)
 
     # #########################################################################
     # Selection update
@@ -361,11 +431,11 @@ class Dashboard():
             self.details.text = self.gen_details(new[0])
 
             # Generate plots
-            Thread(target=self.gen_isos, args=[new[0], 'left']).start()
-            Thread(target=self.gen_isos, args=[new[0], 'right']).start()
+            Thread(target=self.download_isos, args=[new[0], 'left']).start()
+            Thread(target=self.download_isos, args=[new[0], 'right']).start()
 
         else:
-            Thread(target=self.gen_isos, args=[None]).start()
+            Thread(target=self.download_isos, args=[None]).start()
             self.dash_layout.children.remove(self.material_detail)
             self.bottom_graphs()
             self.errors.data = self.gen_error(None)
