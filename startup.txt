@@ -1,1 +1,1 @@
-bokeh serve .
+bokeh serve main.py
