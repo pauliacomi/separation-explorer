@@ -33,8 +33,9 @@ class Dashboard():
         self.g1 = self.gases[1]
         self.pressure = 0
 
+        self.doc = curdoc()  # Save curdoc() for thread access
+
         # Bokeh specific data generation
-        self.doc = curdoc()  # Save curdoc().
         self.data = ColumnDataSource(data=self.gen_data())
         self.errors = ColumnDataSource(data=self.gen_error(None))
 
@@ -323,7 +324,7 @@ class Dashboard():
     def download_isos(self, index, which=None):
 
         if index is None:
-            self.doc.add_next_tick_callback(self.bottom_graphs)
+            return
 
         else:
             mat = self.data.data['labels'][index]
@@ -409,19 +410,17 @@ class Dashboard():
             # Display error points:
             self.errors.data = self.gen_error(new[0])
 
-            if len(old) != 0:
-                # Reset layout
-                self.bottom_graphs()
-
             # Generate material details
             self.details.text = self.gen_details(new[0])
 
-            # Generate plots
+            # Reset bottom graphs
+            self.bottom_graphs()
+
+            # Generate bottom graphs
             Thread(target=self.download_isos, args=[new[0], 'left']).start()
             Thread(target=self.download_isos, args=[new[0], 'right']).start()
 
         else:
-            Thread(target=self.download_isos, args=[None]).start()
             self.errors.data = self.gen_error(None)
 
 
