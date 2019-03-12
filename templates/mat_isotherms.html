@@ -1,0 +1,22 @@
+<div>
+    <h3>Isotherms</h3>
+</div>
+<div>
+    <div style="display: flex;">
+        <div style="flex: 50%; overflow: auto;">
+            {% for iso in gas0_iso %}
+            <div id="{{ iso.filename }}">
+                <span>T={{ iso.t_iso }}</span>
+                <a href="https://adsorption.nist.gov/isodb/index.php?DOI={{ iso.DOI }}#biblio" target="_blank">{{ iso.filename }}</a> 
+            </div>
+            {% endfor %} </div> 
+        <div style="flex: 50%; overflow: auto;">
+            {% for iso in gas1_iso %}
+            <div id="{{ iso.filename }}">
+                <span>T={{ iso.t_iso }}</span>
+                <a href="https://adsorption.nist.gov/isodb/index.php?DOI={{ iso.DOI }}#biblio" target="_blank">{{ iso.filename }}</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>

@@ -16,7 +16,7 @@ from threading import Thread
 
 from tornado import gen
 
-from helpers import TOOLS, TOOLTIP, DETAILS
+from helpers import TOOLS, TOOLTIP, DETAILS, ISOTHERMS, HOVER
 from helpers import load_data, load_nist_isotherm, intersect
 
 
@@ -57,7 +57,8 @@ class Dashboard():
         self.slider.on_change('value', self.pressure_callback)
 
         # Details text
-        self.details = Div(text="", width=400, height=400)
+        self.details = Div(text=self.gen_details(), width=500)
+        self.details_iso = Div(text=self.gen_iso_text(), height=400)
 
         # Isotherms
         self.g0iso = []
@@ -71,7 +72,10 @@ class Dashboard():
         self.dash_layout = layout([
             [widgetbox(self.s_type)],
             [gridplot([[self.p_henry, self.p_loading]])],
-            [widgetbox(children=[self.slider], sizing_mode='scale_width')],
+            [widgetbox(children=[self.slider])],
+            [self.details],
+            [gridplot([[self.p_g0iso, self.p_g1iso]])],
+            [self.details_iso],
         ], sizing_mode='scale_width')
         self.doc.title = "Graphs"
 
@@ -156,37 +160,15 @@ class Dashboard():
 
         self.g0iso = []
         self.g1iso = []
-        callback0 = CustomJS(args=dict(source=self.s_g0iso), code="""
-        var index = cb_data.index['1d'].indices
-        if (index.length == 1) {
-            var id = document.getElementById(source.data['labels'][index]);
-            id.style.backgroundColor = 'red';
-        }
-        else {
-            debugger;
-            for (var i = 0; i < source.data['labels'].length; i++) {
-                var id = document.getElementById(source.data['labels'][i]);
-                id.style.backgroundColor = '';
-            }
-        }
-        """)
-        callback1 = CustomJS(args=dict(source=self.s_g1iso), code="""
-        var index = cb_data.index['1d'].indices
-        if (index.length == 1) {
-            var id = document.getElementById(source.data['labels'][index]);
-            id.style.backgroundColor = 'red';
-        }
-        else {
-            debugger;
-            for (var i = 0; i < source.data['labels'].length; i++) {
-                var id = document.getElementById(source.data['labels'][i]);
-                id.style.backgroundColor = '';
-            }
-        }
-        """)
+        callback0 = CustomJS(
+            args=dict(source=self.s_g0iso), code=HOVER.render())
+        callback1 = CustomJS(
+            args=dict(source=self.s_g1iso), code=HOVER.render())
+
+        plot_side = 350
 
         self.p_g0iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                              plot_width=400, plot_height=400,
+                              plot_width=500, plot_height=plot_side,
                               title='Isotherms {0}'.format(self.g0))
         self.p_g0iso.multi_line('x', 'y', source=self.s_g0iso, alpha=0.6, line_width=2,
                                 hover_line_alpha=1.0)
@@ -198,7 +180,7 @@ class Dashboard():
         self.p_g0iso.yaxis.axis_label = 'Uptake (mmol/g)'
 
         self.p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                              plot_width=400, plot_height=400,
+                              plot_width=500, plot_height=plot_side,
                               title='Isotherms {0}'.format(self.g1))
         self.p_g1iso.multi_line('x', 'y', source=self.s_g1iso, alpha=0.6, line_width=2,
                                 hover_line_alpha=1.0)
@@ -210,9 +192,6 @@ class Dashboard():
         self.p_g1iso.yaxis.axis_label = 'Uptake (mmol/g)'
 
         self.iso_color = itertools.cycle(Category10[10])
-
-        self.material_detail = row(
-            [self.details, gridplot([[self.p_g0iso, self.p_g1iso]])])
 
     # #########################################################################
     # Data generator
@@ -308,24 +287,35 @@ class Dashboard():
 
     def gen_details(self, index=None):
         if index is None:
-            return ""
+            return DETAILS.render()
         else:
             mat = self.data.data['labels'][index]
+            p = self.pressure
 
             data = {
                 'material': mat,
                 'gas0': self.g0,
                 'gas1': self.g1,
-                'gas0_load': self.data.data['x0'][index],
-                'gas1_load': self.data.data['y0'][index],
-                'gas0_hk': self.data_dict[mat][self.g0]['mKh'],
-                'gas1_hk': self.data_dict[mat][self.g1]['mKh'],
                 'gas0_niso': len(self.data_dict[mat][self.g0]['iso']),
                 'gas1_niso': len(self.data_dict[mat][self.g1]['iso']),
-                'gas0_iso': self.data_dict[mat][self.g0]['iso'],
-                'gas1_iso': self.data_dict[mat][self.g1]['iso'],
+                'gas0_load': self.data.data['x0'][index],
+                'gas1_load': self.data.data['y0'][index],
+                'gas0_eload': self.data_dict[mat][self.g0]['eL'][p],
+                'gas1_eload': self.data_dict[mat][self.g1]['eL'][p],
+                'gas0_hk': self.data_dict[mat][self.g0]['mKh'],
+                'gas1_hk': self.data_dict[mat][self.g1]['mKh'],
+                'gas0_ehk': self.data_dict[mat][self.g0]['eKh'],
+                'gas1_ehk': self.data_dict[mat][self.g1]['eKh'],
             }
             return DETAILS.render(**data)
+
+    def gen_iso_text(self, lst=None):
+
+        if lst is None:
+            return ISOTHERMS.render()
+        else:
+            return ISOTHERMS.render(
+                {'gas0_iso': self.g0iso, 'gas1_iso': self.g1iso})
 
     # #########################################################################
     # Isotherms
@@ -363,6 +353,7 @@ class Dashboard():
     @gen.coroutine
     def iso_update(self, source, lst, **kwargs):
         source.data = self.gen_isos(lst=lst)
+        self.details_iso.text = self.gen_iso_text(lst=lst)
 
     # #########################################################################
     # Selection update
@@ -373,7 +364,6 @@ class Dashboard():
         sel = self.data.selected.indices
         if sel:
             self.data.selected.update(indices=[])
-            self.dash_layout.children.remove(self.material_detail)
 
         if index == 0:
             self.g0 = self.gases[0]
@@ -405,6 +395,7 @@ class Dashboard():
         sel = self.data.selected.indices
         if sel:
             self.details.text = self.gen_details(sel[0])
+            self.details_iso.text = self.gen_iso_text(sel[0])
             self.errors.data = self.gen_error(sel[0])
 
     # #########################################################################
@@ -418,14 +409,9 @@ class Dashboard():
             # Display error points:
             self.errors.data = self.gen_error(new[0])
 
-            if len(old) == 0:
-                # Display layout
-                self.dash_layout.children.append(self.material_detail)
-            else:
+            if len(old) != 0:
                 # Reset layout
-                self.dash_layout.children.remove(self.material_detail)
                 self.bottom_graphs()
-                self.dash_layout.children.append(self.material_detail)
 
             # Generate material details
             self.details.text = self.gen_details(new[0])
@@ -436,8 +422,6 @@ class Dashboard():
 
         else:
             Thread(target=self.download_isos, args=[None]).start()
-            self.dash_layout.children.remove(self.material_detail)
-            self.bottom_graphs()
             self.errors.data = self.gen_error(None)
 
 

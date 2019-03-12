@@ -1,10 +1,11 @@
-function change_on_hover(event) {
-    var ds = Bokeh.documents[0].get_model_by_name(event.target.id);
-    if (event.type == 'mouseenter') {
-        ds.attributes.glyph.attributes.line_alpha = 0;
+var index = cb_data.index['1d'].indices
+if (index.length == 1) {
+    var id = document.getElementById(source.data['labels'][index]);
+    id.style.backgroundColor = 'red';
+}
+else {
+    for (var i = 0; i < source.data['labels'].length; i++) {
+        var id = document.getElementById(source.data['labels'][i]);
+        id.style.backgroundColor = '';
     }
-    if (event.type == 'mouseleave') {
-        ds.attributes.glyph.attributes.line_alpha = 1;
-    }
-    ds.change.emit();
 }

@@ -13,6 +13,8 @@ TOOLS = "pan,wheel_zoom,tap,reset"
 
 TOOLTIP = j2_env.get_template('tooltip.html')
 DETAILS = j2_env.get_template('mat_details.html')
+ISOTHERMS = j2_env.get_template('mat_isotherms.html')
+HOVER = j2_env.get_template('js/hover.js')
 
 LINK = r"https://adsorption.nist.gov/isodb/index.php?DOI=10.1002/adma.201400428#biblio"
 
