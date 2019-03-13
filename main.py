@@ -37,7 +37,7 @@ class Dashboard():
 
         # Bokeh specific data generation
         self.data = ColumnDataSource(data=self.gen_data())
-        self.errors = ColumnDataSource(data=self.gen_error(None))
+        self.errors = ColumnDataSource(data=self.gen_error())
         self.s_g0iso = ColumnDataSource(data=self.gen_isos())
         self.s_g1iso = ColumnDataSource(data=self.gen_isos())
 
@@ -50,25 +50,33 @@ class Dashboard():
         self.s_type.on_click(self.s_type_callback)
 
         # Top graphs
-        self.p_loading = None
-        self.p_henry = None
-        self.top_graphs()
+        self.p_loading, self.rend0 = self.top_graph(
+            0, "Uptake at selected pressure")
+        self.p_henry, self.rend1 = self.top_graph(
+            1, "Initial Henry's constant",
+            x_range=(1e-3, 1e7), y_range=(1e-3, 1e7),
+            y_axis_type="log", x_axis_type="log")
+        self.graph_link(self.rend0, self.rend1)
+
+        # Generate labels:
+        self.top_graph_labels()
 
         # Pressure slider
         self.slider = Slider(title="Pressure", value=0.5,
                              start=0.5, end=20, step=0.5)
         self.slider.on_change('value', self.pressure_callback)
 
-        # Details text
+        # Material details
         self.details = Div(text=self.gen_details(), width=500)
-        self.details_iso = Div(text=self.gen_iso_text(), height=400)
 
         # Isotherms
         self.g0iso = []
         self.g1iso = []
-        self.p_g0iso = None
-        self.p_g1iso = None
-        self.bottom_graphs()
+        self.p_g1iso = self.bottom_graph(self.s_g1iso, self.g1)
+        self.p_g0iso = self.bottom_graph(self.s_g0iso, self.g0)
+
+        # Isotherm details
+        self.details_iso = Div(text=self.gen_iso_text(), height=400)
 
         self.dash_layout = layout([
             [widgetbox(self.s_type)],
@@ -80,70 +88,55 @@ class Dashboard():
         ], sizing_mode='scale_width')
         self.doc.title = "Graphs"
 
+    def purge_isos(self):
+        self.g0iso.clear()
+        self.g1iso.clear()
+        self.s_g0iso = ColumnDataSource(data=self.gen_isos())
+        self.s_g1iso = ColumnDataSource(data=self.gen_isos())
+
     def show_dash(self):
         self.doc.add_root(self.dash_layout)
 
-    def top_graphs(self):
+    def top_graph(self, ind, title, **kwargs):
 
-        mapper0 = self.mapper(0)
-        mapper1 = self.mapper(1)
+        mapper = self.mapper(ind)
 
         plot_side_size = 500
+        fig_dict = dict(tools=TOOLS,
+                        active_scroll="wheel_zoom",
+                        plot_width=plot_side_size, plot_height=plot_side_size,
+                        title=title)
+
+        if kwargs:
+            fig_dict.update(kwargs)
 
         # create a new plot and add a renderer
-        self.p_loading = figure(tools=TOOLS,
-                                active_scroll="wheel_zoom",
-                                plot_width=plot_side_size, plot_height=plot_side_size,
-                                title='Uptake at selected pressure')
+        graph = figure(**fig_dict)
 
-        # create another new plot and add a renderer
-        self.p_henry = figure(tools=TOOLS,
-                              active_scroll="wheel_zoom",
-                              x_range=(1e-2, 1e5), y_range=(1e-2, 1e5),
-                              plot_width=plot_side_size, plot_height=plot_side_size,
-                              y_axis_type="log", x_axis_type="log",
-                              title='Initial Henry constant')
-
-        self.p_loading.add_tools(
-            HoverTool(names=["datal", "datar"],
-                      tooltips=TOOLTIP.render(p=0, gas0=self.g0, gas1=self.g1))
-        )
-        self.p_henry.add_tools(
-            HoverTool(names=["datal", "datar"],
-                      tooltips=TOOLTIP.render(p=1, gas0=self.g0, gas1=self.g1))
+        graph.add_tools(
+            HoverTool(names=["data{0}".format(ind)],
+                      tooltips=TOOLTIP.render(p=ind, gas0=self.g0, gas1=self.g1))
         )
 
         # Data
-        rendl = self.p_loading.circle('x0', 'y0', source=self.data, size=10,
-                                      line_color=mapper0, color=mapper0, name="datal")
-        rendr = self.p_henry.circle('x1', 'y1', source=self.data, size=10,
-                                    line_color=mapper1, color=mapper1, name="datar")
+        rend = graph.circle("x{0}".format(ind), "y{0}".format(ind),
+                            source=self.data, size=10,
+                            line_color=mapper, color=mapper,
+                            name="data{0}".format(ind))
 
         # Errors
-        errsl = self.p_loading.segment('x00', 'y00', 'x01', 'y01', source=self.errors,
-                                       color="black", line_width=2)
-        errsr = self.p_henry.segment('x10', 'y10', 'x11', 'y11', source=self.errors,
-                                     color="black", line_width=2)
+        errs = graph.segment('x{0}0'.format(ind), 'y{0}0'.format(ind),
+                             'x{0}1'.format(ind), 'y{0}1'.format(ind),
+                             source=self.errors, color="black", line_width=2)
 
         # Colorbars
-        color_bar0 = ColorBar(
-            color_mapper=mapper0['transform'], width=8,  location=(0, 0))
-        color_bar1 = ColorBar(
-            color_mapper=mapper1['transform'], width=8,  location=(0, 0))
-        self.p_loading.add_layout(color_bar0, 'right')
-        self.p_henry.add_layout(color_bar1, 'right')
+        color_bar = ColorBar(
+            color_mapper=mapper['transform'], width=8, location=(0, 0))
+        graph.add_layout(color_bar, 'right')
 
-        # Add a linked selection and hover effect
-        sel = Circle(fill_alpha=1, fill_color="black", line_color='red')
-        rendl.selection_glyph = sel
-        rendr.selection_glyph = sel
-        rendl.hover_glyph = sel
-        rendr.hover_glyph = sel
+        return graph, rend
 
-        # Generate labels:
-        self.top_graph_label()
-
-    def top_graph_label(self):
+    def top_graph_labels(self):
         self.p_loading.xaxis.axis_label = '{0} (mmol/g)'.format(self.g0)
         self.p_loading.yaxis.axis_label = '{0} (mmol/g)'.format(self.g1)
         self.p_henry.xaxis.axis_label = '{0} (dimensionless)'.format(
@@ -151,48 +144,41 @@ class Dashboard():
         self.p_henry.yaxis.axis_label = '{0} (dimensionless)'.format(
             self.g1)
 
+    def graph_link(self, rend0, rend1):
+
+        # Add a linked selection and hover effect
+        sel = Circle(fill_alpha=1, fill_color="black", line_color='black')
+        rend0.selection_glyph = sel
+        rend1.selection_glyph = sel
+        rend0.hover_glyph = sel
+        rend1.hover_glyph = sel
+
     def mapper(self, z):
         return linear_cmap(
             field_name='z{0}'.format(z), palette=palette,
             low_color='grey', high_color='red',
             low=3, high=90)
 
-    def bottom_graphs(self):
+    def bottom_graph(self, source, gas):
 
-        self.g0iso = []
-        self.g1iso = []
-        callback0 = CustomJS(
-            args=dict(source=self.s_g0iso), code=HOVER.render())
-        callback1 = CustomJS(
-            args=dict(source=self.s_g1iso), code=HOVER.render())
+        callback = CustomJS(
+            args=dict(source=source), code=HOVER.render())
 
         plot_side = 350
 
-        self.p_g0iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                              plot_width=500, plot_height=plot_side,
-                              title='Isotherms {0}'.format(self.g0))
-        self.p_g0iso.multi_line('x', 'y', source=self.s_g0iso, alpha=0.6, line_width=2,
-                                hover_line_alpha=1.0)
-        self.p_g0iso.add_tools(HoverTool(show_arrow=False,
-                                         line_policy='nearest',
-                                         tooltips='@labels',
-                                         callback=callback0))
-        self.p_g0iso.xaxis.axis_label = 'Pressure (bar)'
-        self.p_g0iso.yaxis.axis_label = 'Uptake (mmol/g)'
+        graph = figure(tools=TOOLS, active_scroll="wheel_zoom",
+                       plot_width=500, plot_height=plot_side,
+                       title='Isotherms {0}'.format(gas))
+        graph.multi_line('x', 'y', source=source,
+                         alpha=0.6, line_width=2, hover_line_alpha=1.0)
+        graph.add_tools(HoverTool(show_arrow=False,
+                                  line_policy='nearest',
+                                  tooltips='@labels',
+                                  callback=callback))
+        graph.xaxis.axis_label = 'Pressure (bar)'
+        graph.yaxis.axis_label = 'Uptake (mmol/g)'
 
-        self.p_g1iso = figure(tools=TOOLS, active_scroll="wheel_zoom",
-                              plot_width=500, plot_height=plot_side,
-                              title='Isotherms {0}'.format(self.g1))
-        self.p_g1iso.multi_line('x', 'y', source=self.s_g1iso, alpha=0.6, line_width=2,
-                                hover_line_alpha=1.0)
-        self.p_g1iso.add_tools(HoverTool(show_arrow=False,
-                                         line_policy='nearest',
-                                         tooltips='@labels',
-                                         callback=callback1))
-        self.p_g1iso.xaxis.axis_label = 'Pressure (bar)'
-        self.p_g1iso.yaxis.axis_label = 'Uptake (mmol/g)'
-
-        self.iso_color = itertools.cycle(Category10[10])
+        return graph
 
     # #########################################################################
     # Data generator
@@ -230,7 +216,7 @@ class Dashboard():
     # #########################################################################
     # Error generator
 
-    def gen_error(self, index):
+    def gen_error(self, index=None):
 
         if index is None:
             return dict(
@@ -269,7 +255,7 @@ class Dashboard():
     def gen_isos(self, lst=None):
 
         if lst is None:
-            return dict(labels=[], x=[], y=[])
+            return dict(labels=['a', 'b'], x=[[1, 2], [2, 4]], y=[[1, 1], [2, 2]])
 
         else:
             labels = []
@@ -382,10 +368,10 @@ class Dashboard():
             raise Exception
 
         # Update labels
-        self.top_graph_label()
+        self.top_graph_labels()
 
         # Update bottom
-        self.bottom_graphs()
+        self.purge_isos()
 
     # #########################################################################
     # Set up pressure slider and callback
@@ -414,7 +400,7 @@ class Dashboard():
             self.details.text = self.gen_details(new[0])
 
             # Reset bottom graphs
-            self.bottom_graphs()
+            self.purge_isos()
 
             # Generate bottom graphs
             Thread(target=self.download_isos, args=[new[0], 'left']).start()
