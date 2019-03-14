@@ -1,4 +1,6 @@
 from dashboard import Dashboard
+from bokeh.io import curdoc
 
-dash = Dashboard()
+doc = curdoc()
+dash = Dashboard(doc)
 dash.show_dash()

@@ -34,7 +34,7 @@ app = Flask(__name__)
 
 def modify_doc(doc):
 
-    dash = Dashboard()
+    dash = Dashboard(doc)
     dash.show_dash()
 
 

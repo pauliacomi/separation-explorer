@@ -21,7 +21,7 @@ from helpers import load_data, load_nist_isotherm, intersect
 
 class Dashboard():
 
-    def __init__(self):
+    def __init__(self, doc):
 
         self.data_dict = load_data()
 
@@ -32,7 +32,7 @@ class Dashboard():
         self.g1 = self.gases[1]
         self.pressure = 0
 
-        self.doc = curdoc()  # Save doc() for thread access
+        self.doc = doc  # Save doc() for thread access
 
         # Bokeh specific data generation
         self.data = ColumnDataSource(data=self.gen_data())
@@ -226,8 +226,8 @@ class Dashboard():
             p = self.pressure
 
             mat = self.data.data['labels'][index]
-            x0 = np.nan_to_num(self.data.data['x0'][index])
-            y0 = np.nan_to_num(self.data.data['y0'][index])
+            x0 = self.data.data['x0'][index]
+            y0 = self.data.data['y0'][index]
             xe00 = self.data_dict[mat][self.g0]['eL'][p]
             xe01 = self.data_dict[mat][self.g1]['eL'][p]
             x1 = self.data.data['x1'][index]
