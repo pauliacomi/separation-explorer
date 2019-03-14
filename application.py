@@ -17,7 +17,7 @@ from bokeh.server.tornado import BokehTornado
 from bokeh.server.util import bind_sockets
 from bokeh.themes import Theme
 
-from mat_explorer import Dashboard
+from dashboard import Dashboard
 
 if __name__ == '__main__':
     print('This script is intended to be run with gunicorn. e.g.')
