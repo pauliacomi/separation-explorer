@@ -10,6 +10,7 @@ from bokeh.palettes import Spectral10 as palette
 from bokeh.palettes import Category10
 import itertools
 
+import numpy as np
 
 from functools import partial
 from threading import Thread
@@ -91,8 +92,8 @@ class Dashboard():
     def purge_isos(self):
         self.g0iso.clear()
         self.g1iso.clear()
-        self.s_g0iso = ColumnDataSource(data=self.gen_isos())
-        self.s_g1iso = ColumnDataSource(data=self.gen_isos())
+        self.s_g0isodata = self.gen_isos()
+        self.s_g1isodata = self.gen_isos()
 
     def show_dash(self):
         self.doc.add_root(self.dash_layout)
@@ -255,7 +256,7 @@ class Dashboard():
     def gen_isos(self, lst=None):
 
         if lst is None:
-            return dict(labels=['a', 'b'], x=[[1, 2], [2, 4]], y=[[1, 1], [2, 2]])
+            return dict(labels=[], x=[], y=[])
 
         else:
             labels = []
@@ -407,7 +408,8 @@ class Dashboard():
             Thread(target=self.download_isos, args=[new[0], 'right']).start()
 
         else:
-            self.errors.data = self.gen_error(None)
+            # Remove error points:
+            self.errors.data = self.gen_error()
 
 
 dash = Dashboard()
