@@ -1,3 +1,4 @@
 pygaps
 bokeh
+gunicorn
 requests
