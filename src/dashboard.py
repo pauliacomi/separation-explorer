@@ -85,16 +85,15 @@ class Dashboard():
             [gridplot([[self.p_g0iso, self.p_g1iso]])],
             [self.details_iso],
         ], sizing_mode='scale_width')
+
         self.doc.title = "Graphs"
+        self.doc.add_root(self.dash_layout)
 
     def purge_isos(self):
         self.g0iso.clear()
         self.g1iso.clear()
         self.s_g0isodata = self.gen_isos()
         self.s_g1isodata = self.gen_isos()
-
-    def show_dash(self):
-        self.doc.add_root(self.dash_layout)
 
     def top_graph(self, ind, title, **kwargs):
 

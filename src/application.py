@@ -9,22 +9,14 @@ from tornado.ioloop import IOLoop
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
 from bokeh.embed import server_document
-from bokeh.layouts import column
-from bokeh.models import ColumnDataSource, Slider
-from bokeh.plotting import figure
 from bokeh.server.server import BaseServer
 from bokeh.server.tornado import BokehTornado
 from bokeh.server.util import bind_sockets
-from bokeh.themes import Theme
 
-from dashboard import Dashboard
+from src.dashboard import Dashboard
 
 if __name__ == '__main__':
-    print('This script is intended to be run with gunicorn. e.g.')
-    print()
-    print('    gunicorn -w 4 flask_gunicorn_embed:app')
-    print()
-    print('will start the app on four processes')
+    print('This script is intended to be run with gunicorn.')
     import sys
     sys.exit()
 
@@ -33,9 +25,7 @@ app = Flask(__name__)
 
 
 def modify_doc(doc):
-
     dash = Dashboard(doc)
-    dash.show_dash()
 
 
 # can't use shortcuts here, since we are passing to low level BokehTornado
