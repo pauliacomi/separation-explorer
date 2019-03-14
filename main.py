@@ -228,14 +228,23 @@ class Dashboard():
             p = self.pressure
 
             mat = self.data.data['labels'][index]
-            x0 = self.data.data['x0'][index]
-            y0 = self.data.data['y0'][index]
+            x0 = np.nan_to_num(self.data.data['x0'][index])
+            y0 = np.nan_to_num(self.data.data['y0'][index])
             xe00 = self.data_dict[mat][self.g0]['eL'][p]
             xe01 = self.data_dict[mat][self.g1]['eL'][p]
             x1 = self.data.data['x1'][index]
             y1 = self.data.data['y1'][index]
             xe10 = self.data_dict[mat][self.g0]['eKh']
             xe11 = self.data_dict[mat][self.g1]['eKh']
+
+            if x0 == 'NaN':
+                x0 = 0
+            if y0 == 'NaN':
+                y0 = 0
+            if x1 == 'NaN':
+                x1 = 0
+            if y1 == 'NaN':
+                y1 = 0
 
             e_dict = dict(
                 labels=[mat, mat],
