@@ -38,7 +38,7 @@ sockets, port = bind_sockets("localhost", 0)
 
 @app.route('/', methods=['GET'])
 def bkapp_page():
-    script = server_document('http://localhost:%d/bkapp' % port)
+    script = server_document('http://localhost:%d/bokeh' % port)
     return render_template("embed.html", script=script, template="Flask")
 
 
@@ -46,7 +46,8 @@ def bk_worker():
     asyncio.set_event_loop(asyncio.new_event_loop())
 
     bokeh_tornado = BokehTornado(
-        {'/bkapp': bkapp}, extra_websocket_origins=["localhost:8000"])
+        {'/bokeh': bkapp},
+        extra_websocket_origins=["localhost:5000"])
     bokeh_http = HTTPServer(bokeh_tornado)
     bokeh_http.add_sockets(sockets)
 

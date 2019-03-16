@@ -1,1 +1,1 @@
-web: gunicorn application:app --preload
+web: gunicorn tornado_app:app --preload
