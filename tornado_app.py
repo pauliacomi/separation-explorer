@@ -47,7 +47,7 @@ def bk_worker():
 
     bokeh_tornado = BokehTornado(
         {'/bokeh': bkapp},
-        extra_websocket_origins=["localhost:5000"])
+        extra_websocket_origins=["localhost"])
     bokeh_http = HTTPServer(bokeh_tornado)
     bokeh_http.add_sockets(sockets)
 
