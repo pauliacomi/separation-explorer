@@ -1,1 +1,1 @@
-web: gunicorn tornado_app:app --preload
+web: bokeh serve --port=$PORT --address=0.0.0.0 --num-procs=0 --allow-websocket-origin=separation-explorer.herokuapp.com --use-xheaders .
