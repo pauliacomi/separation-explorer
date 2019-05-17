@@ -88,9 +88,6 @@ class Dashboard():
             [self.details_iso],
         ], sizing_mode='scale_width')
 
-        self.doc.title = "Graphs"
-        self.doc.add_root(self.dash_layout)
-
     def purge_isos(self):
         self.g0iso.clear()
         self.g1iso.clear()
