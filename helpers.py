@@ -14,7 +14,10 @@ TOOLS = "pan,wheel_zoom,tap,reset"
 TOOLTIP = j2_env.get_template('tooltip.html')
 DETAILS = j2_env.get_template('mat_details.html')
 ISOTHERMS = j2_env.get_template('mat_isotherms.html')
-HOVER = j2_env.get_template('js/hover.js')
+# HOVER = j2_env.get_template('js/hover.js')
+
+GASES = ['carbon dioxide', 'nitrogen', 'methane',
+         'ethane', 'ethene', 'propane', 'propene']
 
 
 def intersect(a, b):

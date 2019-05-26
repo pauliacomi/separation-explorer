@@ -16,16 +16,16 @@ from threading import Thread
 from tornado import gen
 
 from helpers import TOOLS, TOOLTIP, DETAILS, ISOTHERMS, HOVER
-from helpers import load_data, load_nist_isotherm, intersect
+from helpers import load_nist_isotherm, intersect
 
 data_dict = load_data()
 
 
 class Dashboard():
 
-    def __init__(self, doc):
+    def __init__(self, doc, data):
 
-        self.data_dict = data_dict
+        self.data_dict = data
 
         # Parameters
         self.gases = ['carbon dioxide', 'nitrogen',

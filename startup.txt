@@ -5,3 +5,8 @@ web: bokeh serve --port=$PORT --address=0.0.0.0 --num-procs=0 --allow-websocket-
 With gunicorn:
 
 web: gunicorn application:app --preload  (maybe) --max-requests 500
+
+web: gunicorn tornado_app:app --preload
+
+to embed in an website:
+<iframe src="https://x.herokuapp.com/x" height="500" width="100%" frameBorder="0"></iframe>
