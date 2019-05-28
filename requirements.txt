@@ -1,2 +1,2 @@
 bokeh
-jninja2
+jinja2
