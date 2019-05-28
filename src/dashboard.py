@@ -2,8 +2,6 @@
 # hover tools not working when gas is changed
 ##
 
-import os
-
 from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
 from bokeh.models import Slider, RangeSlider, Div, Select
@@ -12,17 +10,7 @@ from bokeh.models import ColumnDataSource
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Spectral10 as palette
 
-from jinja2 import Environment, FileSystemLoader
-
-j2_env = Environment(
-    loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
-
 TOOLS = "pan,wheel_zoom,tap,reset"
-
-TOOLTIP = j2_env.get_template('tooltip.html')
-DETAILS = j2_env.get_template('mat_details.html')
-ISOTHERMS = j2_env.get_template('mat_isotherms.html')
-# HOVER = j2_env.get_template('js/hover.js')
 
 GASES = ['carbon dioxide', 'nitrogen', 'methane',
          'ethane', 'ethene', 'propane', 'propene']
@@ -46,7 +34,12 @@ def graph_link(rends):
 
 class Dashboard():
 
-    def __init__(self, doc, data):
+    def __init__(self, doc, data, **templates):
+
+        # Save templates
+        self.t_tooltip = templates["t_tooltip"]
+        self.t_matdet = templates["t_matdet"]
+        self.t_isodet = templates["t_isodet"]
 
         # Save references for thread access
         self._data_dict = data
@@ -140,7 +133,7 @@ class Dashboard():
 
         graph.add_tools(HoverTool(
             names=["data{0}".format(ind)],
-            tooltips=TOOLTIP.render(p=ind, gas0=self.g1, gas1=self.g2))
+            tooltips=self.t_tooltip.render(p=ind, gas0=self.g1, gas1=self.g2))
         )
 
         # Data
@@ -313,7 +306,7 @@ class Dashboard():
 
     def gen_details(self, index=None):
         if index is None:
-            return DETAILS.render()
+            return self.t_matdet.render()
         else:
             mat = self.data.data['labels'][index]
             p = self.lp
@@ -333,7 +326,7 @@ class Dashboard():
                 'gas0_ehk': self._data_dict[mat][self.g1]['eKh'],
                 'gas1_ehk': self._data_dict[mat][self.g2]['eKh'],
             }
-            return DETAILS.render(**data)
+            return self.t_matdet.render(**data)
 
     # #########################################################################
     # Callback for selection
