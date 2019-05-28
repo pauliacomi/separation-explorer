@@ -1,6 +1,8 @@
-## labels not being generated
-## hover tools not working when gas is changed
+# labels not being generated
+# hover tools not working when gas is changed
 ##
+
+import os
 
 from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
@@ -10,7 +12,20 @@ from bokeh.models import ColumnDataSource
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Spectral10 as palette
 
-from helpers import GASES, TOOLS, TOOLTIP, DETAILS
+from jinja2 import Environment, FileSystemLoader
+
+j2_env = Environment(
+    loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
+
+TOOLS = "pan,wheel_zoom,tap,reset"
+
+TOOLTIP = j2_env.get_template('tooltip.html')
+DETAILS = j2_env.get_template('mat_details.html')
+ISOTHERMS = j2_env.get_template('mat_isotherms.html')
+# HOVER = j2_env.get_template('js/hover.js')
+
+GASES = ['carbon dioxide', 'nitrogen', 'methane',
+         'ethane', 'ethene', 'propane', 'propene']
 
 
 def gen_cmap(z):
@@ -223,16 +238,18 @@ class Dashboard():
 
         return dict(
             labels=common,
-            
+
             x0=[dd[mat][g1]['mL'][p] for mat in common],
             y0=[dd[mat][g2]['mL'][p] for mat in common],
 
             x1=[dd[mat][g1]['mKh'] for mat in common],
             y1=[dd[mat][g2]['mKh'] for mat in common],
 
-            x2=[dd[mat][g1]['mL'][p2] - dd[mat][g1]['mL'][p1] for mat in common],
-            y2=[dd[mat][g2]['mL'][p2] - dd[mat][g2]['mL'][p1] for mat in common],
-            
+            x2=[dd[mat][g1]['mL'][p2] - dd[mat][g1]['mL'][p1]
+                for mat in common],
+            y2=[dd[mat][g2]['mL'][p2] - dd[mat][g2]['mL'][p1]
+                for mat in common],
+
             z0x=z0x,
             z0y=z0y,
             z1x=z1x,
@@ -254,7 +271,7 @@ class Dashboard():
                 x00=[], y00=[], x01=[], y01=[],
                 x10=[], y10=[], x11=[], y11=[],
                 x20=[], y20=[], x21=[], y21=[],
-                )
+            )
 
         else:
             p = self.lp

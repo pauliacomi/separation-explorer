@@ -1,5 +1,2 @@
-gunicorn
-flask
-requests
-pygaps
 bokeh
+jninja2
