@@ -6,19 +6,19 @@
     <table>
         <tr>
             <td class="label-text">Coord (x, y):</td>
-            <td class="label-text label-value">(@x{{ p }}, @y{{ p }})</td>
+            <td class="label-text label-value">(@x_{{ p }}, @y_{{ p }})</td>
         </tr>
         <tr>
             <td class="label-text">Total isotherms:</td>
-            <td class="label-value">@z{{ p }}</td>
+            <td class="label-value">@n_{{ p }}</td>
         </tr>
         <tr>
-            <td class="label-text">{{ gas0 | title }} isotherms:</td>
-            <td class="label-value">@z{{ 0 }}x</td>
+            <td class="label-text">Gas 1 isotherms:</td>
+            <td class="label-value">@n_x{{ p }}</td>
         </tr>
         <tr>
-            <td class="label-text">{{ gas1 | title }} isotherms:</td>
-            <td class="label-value">@z{{ 0 }}y</td>
+            <td class="label-text">Gas 2 isotherms:</td>
+            <td class="label-value">@n_y{{ p }}</td>
         </tr>
     </table>
 </div>

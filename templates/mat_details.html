@@ -6,33 +6,33 @@
         <tbody>
             <tr>
                 <td>&nbsp;</td>
-                <td>{{ gas0 | default('Gas 1') | title }}</td>
-                <td>{{ gas1 | default('Gas 2') | title }}</td>
+                <td>{{ gas1 | default('Gas 1') | title }}</td>
+                <td>{{ gas2 | default('Gas 2') | title }}</td>
             </tr>
             <tr>
                 <td>Number of isotherms</td>
-                <td>{{ gas0_niso | default(0) }}</td>
                 <td>{{ gas1_niso | default(0) }}</td>
+                <td>{{ gas2_niso | default(0) }}</td>
             </tr>
             <tr>
                 <td>Selected loading</td>
-                <td>{{ gas0_load | default(0) | round(3) }}</td>
                 <td>{{ gas1_load | default(0) | round(3) }}</td>
+                <td>{{ gas2_load | default(0) | round(3) }}</td>
             </tr>
             <tr>
                 <td>StdDev Loading</td>
-                <td>{{ gas0_eload | default(0) | round(3) }}</td>
                 <td>{{ gas1_eload | default(0) | round(3) }}</td>
+                <td>{{ gas2_eload | default(0) | round(3) }}</td>
             </tr>
             <tr>
                 <td>Henry's constant</td>
-                <td>{{ gas0_hk | default(0) | round(5) }}</td>
                 <td>{{ gas1_hk | default(0) | round(5) }}</td>
+                <td>{{ gas2_hk | default(0) | round(5) }}</td>
             </tr>
             <tr>
                 <td>StdDev Kh</td>
-                <td>{{ gas0_ehk | default(0) | round(5) }}</td>
                 <td>{{ gas1_ehk | default(0) | round(5) }}</td>
+                <td>{{ gas2_ehk | default(0) | round(5) }}</td>
             </tr>
         </tbody>
     </table>

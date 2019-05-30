@@ -1,6 +1,10 @@
 # labels not being generated
-# hover tools not working when gas is changed
-##
+
+# BUG: Do not allow more than one point to be selected (when overlaid)
+# BUG: error bars remain when there is no point
+
+
+import numpy as np
 
 from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
@@ -13,13 +17,14 @@ from bokeh.palettes import Spectral10 as palette
 TOOLS = "pan,wheel_zoom,tap,reset"
 
 GASES = ['carbon dioxide', 'nitrogen', 'methane',
-         'ethane', 'ethene', 'propane', 'propene']
+         'ethane', 'ethene', 'acetylene', 'propane', 'propene',
+         'butane', 'isobutane']
 
 
 def gen_cmap(z):
     """Create a linear cmap with a particular name."""
     return linear_cmap(
-        field_name='z{0}'.format(z), palette=palette,
+        field_name='n_{0}'.format(z), palette=palette,
         low_color='grey', high_color='red',
         low=3, high=90)
 
@@ -42,7 +47,7 @@ class Dashboard():
         self.t_isodet = templates["t_isodet"]
 
         # Save references for thread access
-        self._data_dict = data
+        self._data = data
         self._doc = doc
 
         # Gas definitions
@@ -52,7 +57,7 @@ class Dashboard():
         # Pressure definitions
         self.lp = 0
         self.p1 = 0
-        self.p2 = 1
+        self.p2 = 9
 
         # Bokeh specific data generation
         self.data = ColumnDataSource(data=self.gen_data())
@@ -78,13 +83,13 @@ class Dashboard():
 
         # Top graphs
         self.p_henry, rend1 = self.top_graph(
-            1, "Initial Henry's constant",
+            "K", "Initial Henry's constant",
             x_range=(1e-3, 1e7), y_range=(1e-3, 1e7),
             y_axis_type="log", x_axis_type="log")
         self.p_loading, rend2 = self.top_graph(
-            0, "Uptake at selected pressure")
+            "L", "Uptake at selected pressure")
         self.p_wc, rend3 = self.top_graph(
-            2, "Working capacity in selected range")
+            "W", "Working capacity in selected range")
         graph_link([rend1, rend2, rend3])
         self.top_graph_labels()
 
@@ -94,7 +99,7 @@ class Dashboard():
         p_slider.on_change('value', self.pressure_callback)
 
         # Working capacity slider
-        wc_slider = RangeSlider(title="Working capacity", value=(1, 5),
+        wc_slider = RangeSlider(title="Working capacity", value=(0.5, 5),
                                 start=0.5, end=20, step=0.5)
         wc_slider.on_change('value', self.wc_callback)
 
@@ -108,7 +113,8 @@ class Dashboard():
             [g1_sel, g2_sel],
             [gridplot([
                 [self.details, self.p_henry],
-                [self.p_loading, self.p_wc]])],
+                [self.p_loading, self.p_wc]],
+                sizing_mode='scale_width')],
             [widgetbox(children=[p_slider, wc_slider])],
             # [gridplot([[self.p_g0iso, self.p_g1iso]])],
             [self.details_iso],
@@ -132,22 +138,22 @@ class Dashboard():
         graph = figure(**fig_dict)
 
         graph.add_tools(HoverTool(
-            names=["data{0}".format(ind)],
-            tooltips=self.t_tooltip.render(p=ind, gas0=self.g1, gas1=self.g2))
+            names=["data_{0}".format(ind)],
+            tooltips=self.t_tooltip.render(p=ind))
         )
 
         # Data
         rend = graph.circle(
-            "x{0}".format(ind), "y{0}".format(ind),
+            "x_{0}".format(ind), "y_{0}".format(ind),
             source=self.data, size=10,
             line_color=mapper, color=mapper,
-            name="data{0}".format(ind)
+            name="data_{0}".format(ind)
         )
 
         # Errors
-        errs = graph.segment('x{0}0'.format(ind), 'y{0}0'.format(ind),
-                             'x{0}1'.format(ind), 'y{0}1'.format(ind),
-                             source=self.errors, color="black", line_width=2)
+        graph.segment('{0}_x0'.format(ind), '{0}_y0'.format(ind),
+                      '{0}_x1'.format(ind), '{0}_y1'.format(ind),
+                      source=self.errors, color="black", line_width=2)
 
         # Colorbar
         graph.add_layout(ColorBar(
@@ -165,6 +171,8 @@ class Dashboard():
             self.g1)
         self.p_henry.yaxis.axis_label = '{0} (dimensionless)'.format(
             self.g2)
+        self.p_wc.xaxis.axis_label = '{0} (mmol/g)'.format(self.g1)
+        self.p_wc.yaxis.axis_label = '{0} (mmol/g)'.format(self.g2)
 
     # #########################################################################
     # Selection update
@@ -189,70 +197,118 @@ class Dashboard():
 
     def pressure_callback(self, attr, old, new):
         self.lp = int(new * 2) - 1
-        self.data.data = self.gen_data()
+        self.data.patch(self.patch_data_l())
         sel = self.data.selected.indices
         if sel:
             self.errors.data = self.gen_error(sel[0])
             self.details.text = self.gen_details(sel[0])
-            # self.details_iso.text = self.gen_iso_text(sel[0])
 
     # #########################################################################
     # Set up working capacity slider and callback
 
     def wc_callback(self, attr, old, new):
         self.p1, self.p2 = int(new[0] * 2) - 1, int(new[1] * 2) - 1
-        self.data.data = self.gen_data()
+        self.data.patch(self.patch_data_w())
         sel = self.data.selected.indices
         if sel:
             self.errors.data = self.gen_error(sel[0])
             self.details.text = self.gen_details(sel[0])
-        # self.details_iso.text = self.gen_iso_text(sel[0])
 
     # #########################################################################
     # Data generator
 
     def gen_data(self):
 
-        dd = self._data_dict
-        g1 = self.g1
-        g2 = self.g2
-        p = self.lp
-        p1 = self.p1
-        p2 = self.p2
+        def get_loading(x):
+            if not x:
+                return np.nan
+            elif len(x) <= self.lp:
+                return np.nan
+            return x[self.lp]
 
-        common = [mat for mat in dd if
-                  dd[mat].get(g1, False) and
-                  dd[mat].get(g2, False)]
+        def get_wc(x):
+            if not x:
+                return np.nan
+            elif len(x) <= self.p1 or len(x) <= self.p2:
+                return np.nan
+            return x[self.p2] - x[self.p1]
 
-        z0x = [dd[mat][g1]['lL'][p] for mat in common]
-        z0y = [dd[mat][g2]['lL'][p] for mat in common]
-        z1x = [dd[mat][g1]['lKh'] for mat in common]
-        z1y = [dd[mat][g2]['lKh'] for mat in common]
+        def get_nwc(x):
+            if not x:
+                return np.nan
+            elif len(x) <= self.p1 or len(x) <= self.p2:
+                return np.nan
+            return x[self.p1] + x[self.p2]
 
-        return dict(
-            labels=common,
+        return {
+            'labels': self._data.index,
 
-            x0=[dd[mat][g1]['mL'][p] for mat in common],
-            y0=[dd[mat][g2]['mL'][p] for mat in common],
+            # henry data
+            'x_K': self._data[self.g1, 'mKh'].values,
+            'y_K': self._data[self.g2, 'mKh'].values,
+            'n_xK': self._data[self.g1, 'lKh'].values,
+            'n_yK': self._data[self.g2, 'lKh'].values,
+            'n_K': self._data[self.g1, 'lKh'].values + self._data[self.g2, 'lKh'].values,
 
-            x1=[dd[mat][g1]['mKh'] for mat in common],
-            y1=[dd[mat][g2]['mKh'] for mat in common],
+            # loading data
+            'x_L': self._data[self.g1, 'mL'].apply(get_loading).values,
+            'y_L': self._data[self.g2, 'mL'].apply(get_loading).values,
+            'n_xL': self._data[self.g1, 'lL'].apply(get_loading).values,
+            'n_yL': self._data[self.g2, 'lL'].apply(get_loading).values,
+            'n_L': self._data[self.g1, 'lL'].apply(get_loading).values +
+            self._data[self.g2, 'lL'].apply(get_loading).values,
 
-            x2=[dd[mat][g1]['mL'][p2] - dd[mat][g1]['mL'][p1]
-                for mat in common],
-            y2=[dd[mat][g2]['mL'][p2] - dd[mat][g2]['mL'][p1]
-                for mat in common],
+            # Working capacity data
+            'x_W': self._data[self.g1, 'mL'].apply(get_wc).values,
+            'y_W': self._data[self.g2, 'mL'].apply(get_wc).values,
+            'n_xW': self._data[self.g1, 'lL'].apply(get_nwc).values,
+            'n_yW': self._data[self.g2, 'lL'].apply(get_nwc).values,
+            'n_W': self._data[self.g1, 'lL'].apply(get_nwc).values +\
+            self._data[self.g2, 'lL'].apply(get_nwc).values,
+        }
 
-            z0x=z0x,
-            z0y=z0y,
-            z1x=z1x,
-            z1y=z1y,
-            z2x=z0x,
-            z2y=z0y,
-            z0=[z0x[a] + z0y[a] for a in range(len(z0x))],
-            z1=[z1x[a] + z1y[a] for a in range(len(z1x))],
-            z2=[z0x[a] + z0y[a] for a in range(len(z0x))],
-        )
+    def patch_data_l(self):
+
+        def get_loading(x):
+            if not x:
+                return np.nan
+            elif len(x) <= self.lp:
+                return np.nan
+            return x[self.lp]
+
+        return {
+            'x_L': [(slice(None), self._data[self.g1, 'mL'].apply(get_loading).values)],
+            'y_L': [(slice(None), self._data[self.g2, 'mL'].apply(get_loading).values)],
+            'n_xL': [(slice(None), self._data[self.g1, 'lL'].apply(get_loading).values)],
+            'n_yL': [(slice(None), self._data[self.g2, 'lL'].apply(get_loading).values)],
+            'n_L': [(slice(None), self._data[self.g1, 'lL'].apply(get_loading).values +
+                     self._data[self.g2, 'lL'].apply(get_loading).values)]
+        }
+
+    def patch_data_w(self):
+
+        def get_wc(x):
+            if not x:
+                return np.nan
+            elif len(x) <= self.p1 or len(x) <= self.p2:
+                return np.nan
+            return x[self.p2] - x[self.p1]
+
+        def get_nwc(x):
+            if not x:
+                return np.nan
+            elif len(x) <= self.p1 or len(x) <= self.p2:
+                return np.nan
+            return x[self.p1] + x[self.p2]
+
+        return {
+            'x_W': [(slice(None), self._data[self.g1, 'mL'].apply(get_wc).values)],
+            'y_W': [(slice(None), self._data[self.g2, 'mL'].apply(get_wc).values)],
+            'n_xW': [(slice(None), self._data[self.g1, 'lL'].apply(get_nwc).values)],
+            'n_yW': [(slice(None), self._data[self.g2, 'lL'].apply(get_nwc).values)],
+            'n_W': [(slice(None), self._data[self.g1, 'lL'].apply(get_nwc).values +
+                     self._data[self.g2, 'lL'].apply(get_nwc).values)]
+        }
 
     # #########################################################################
     # Error generator
@@ -260,46 +316,55 @@ class Dashboard():
     def gen_error(self, index=None):
 
         if index is None:
-            return dict(
-                x00=[], y00=[], x01=[], y01=[],
-                x10=[], y10=[], x11=[], y11=[],
-                x20=[], y20=[], x21=[], y21=[],
-            )
+            return {
+                'K_x0': [], 'K_y0': [], 'K_x1': [], 'K_y1': [],
+                'L_x0': [], 'L_y0': [], 'L_x1': [], 'L_y1': [],
+                'W_x0': [], 'W_y0': [], 'W_x1': [], 'W_y1': [],
+            }
 
         else:
-            p = self.lp
+            def get_err(x, y):
+                if not x:
+                    return np.nan
+                elif len(x) <= y:
+                    return np.nan
+                return x[y]
 
             mat = self.data.data['labels'][index]
-            x0 = self.data.data['x0'][index]
-            y0 = self.data.data['y0'][index]
-            xe00 = self._data_dict[mat][self.g1]['eL'][p]
-            xe01 = self._data_dict[mat][self.g2]['eL'][p]
-            x1 = self.data.data['x1'][index]
-            y1 = self.data.data['y1'][index]
-            xe10 = self._data_dict[mat][self.g1]['eKh']
-            xe11 = self._data_dict[mat][self.g2]['eKh']
+            K_x = self.data.data['x_K'][index]
+            K_y = self.data.data['y_K'][index]
+            L_x = self.data.data['x_L'][index]
+            L_y = self.data.data['y_L'][index]
+            W_x = self.data.data['x_W'][index]
+            W_y = self.data.data['y_W'][index]
+            K_ex = self._data.loc[mat, (self.g1, 'eKh')]
+            K_ey = self._data.loc[mat, (self.g2, 'eKh')]
+            L_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.lp)
+            L_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.lp)
+            W_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.p1) + \
+                get_err(self._data.loc[mat, (self.g1, 'eL')], self.p2)
+            W_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.p1) + \
+                get_err(self._data.loc[mat, (self.g2, 'eL')], self.p2)
 
-            if x0 == 'NaN':
-                x0 = 0
-            if y0 == 'NaN':
-                y0 = 0
-            if x1 == 'NaN':
-                x1 = 0
-            if y1 == 'NaN':
-                y1 = 0
+            return {
+                'labels': [mat, mat],
 
-            e_dict = dict(
-                labels=[mat, mat],
-                x00=[x0 - xe00, x0],
-                y00=[y0, y0-xe01],
-                x01=[x0 + xe00, x0],
-                y01=[y0, y0+xe01],
-                x10=[x1 - xe10, x1],
-                y10=[y1, y1-xe11],
-                x11=[x1 + xe10, x1],
-                y11=[y1, y1+xe11],
-            )
-            return e_dict
+                # henry data
+                'K_x0': [K_x - K_ex, K_x],
+                'K_y0': [K_y, K_y - K_ey],
+                'K_x1': [K_x + K_ex, K_x],
+                'K_y1': [K_y, K_y + K_ey],
+                # loading data
+                'L_x0': [L_x - L_ex, L_x],
+                'L_y0': [L_y, L_y - L_ey],
+                'L_x1': [L_x + L_ex, L_x],
+                'L_y1': [L_y, L_y + L_ey],
+                # working capacity data
+                'W_x0': [W_x - W_ex, W_x],
+                'W_y0': [W_y, W_y - W_ey],
+                'W_x1': [W_x + W_ex, W_x],
+                'W_y1': [W_y, W_y + W_ey],
+            }
 
     # #########################################################################
     # Text generator
@@ -309,22 +374,20 @@ class Dashboard():
             return self.t_matdet.render()
         else:
             mat = self.data.data['labels'][index]
-            p = self.lp
-
             data = {
                 'material': mat,
-                'gas0': self.g1,
-                'gas1': self.g2,
-                'gas0_niso': len(self._data_dict[mat][self.g1]['iso']),
-                'gas1_niso': len(self._data_dict[mat][self.g2]['iso']),
-                'gas0_load': self.data.data['x0'][index],
-                'gas1_load': self.data.data['y0'][index],
-                'gas0_eload': self._data_dict[mat][self.g1]['eL'][p],
-                'gas1_eload': self._data_dict[mat][self.g2]['eL'][p],
-                'gas0_hk': self._data_dict[mat][self.g1]['mKh'],
-                'gas1_hk': self._data_dict[mat][self.g2]['mKh'],
-                'gas0_ehk': self._data_dict[mat][self.g1]['eKh'],
-                'gas1_ehk': self._data_dict[mat][self.g2]['eKh'],
+                'gas1': self.g1,
+                'gas2': self.g2,
+                'gas1_niso': len(self._data.loc[mat, (self.g1, 'iso')]),
+                'gas2_niso': len(self._data.loc[mat, (self.g2, 'iso')]),
+                'gas1_load': self.data.data['x_L'][index],
+                'gas2_load': self.data.data['y_L'][index],
+                'gas1_eload': self.errors.data['L_x1'][0] - self.errors.data['L_x1'][1],
+                'gas2_eload': self.errors.data['L_y1'][1] - self.errors.data['L_y1'][0],
+                'gas1_hk': self.data.data['x_K'][index],
+                'gas2_hk': self.data.data['y_K'][index],
+                'gas1_ehk': self.errors.data['K_x1'][0] - self.errors.data['K_x1'][1],
+                'gas2_ehk': self.errors.data['L_y1'][1] - self.errors.data['L_y1'][0],
             }
             return self.t_matdet.render(**data)
 
@@ -333,10 +396,10 @@ class Dashboard():
 
     def selection_callback(self, attr, old, new):
 
+        # Check if the user has selected a point
         if len(new) == 1:
-            # The user has selected a point
 
-            # # Display error points:
+            # Display error points:
             self.errors.data = self.gen_error(new[0])
 
             # Generate material details
@@ -345,3 +408,6 @@ class Dashboard():
         else:
             # Remove error points:
             self.errors.data = self.gen_error()
+
+            # Remove material details
+            self.details.text = self.gen_details()

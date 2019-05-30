@@ -1,6 +1,7 @@
 import json
 import os
 
+import pandas as pd
 from bokeh.io import curdoc
 
 from jinja2 import Environment, FileSystemLoader
@@ -8,15 +9,24 @@ from jinja2 import Environment, FileSystemLoader
 from src.dashboard import Dashboard
 
 j2_env = Environment(
-    loader=FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')))
+    loader=FileSystemLoader(
+        os.path.join(os.path.dirname(__file__), 'templates')))
 
 
 def load_data():
     """Load explorer data."""
-    path = os.path.join(os.path.dirname(__file__), 'data', 'data.json')
-    with open(path) as file:
+
+    with open(os.path.join(
+            os.path.dirname(__file__), 'data', 'data.json')) as file:
         data = json.load(file)
-    return data
+
+    data_new = {
+        a: {(ok, ik): val for (ok, idct) in b.items()
+            for ik, val in idct.items()}
+        for (a, b) in data.items()
+    }
+
+    return pd.DataFrame.from_dict(data_new, orient='index')
 
 
 doc = curdoc()
@@ -29,6 +39,6 @@ dash = Dashboard(doc, data,
                  )
 doc.add_root(dash.dash_layout)
 
-del doc
-del dash
-del data
+# del doc
+# del dash
+# del data
