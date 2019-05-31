@@ -2,6 +2,8 @@
 
 # BUG: Do not allow more than one point to be selected (when overlaid)
 # BUG: error bars remain when there is no point
+# TODO make display table responsive
+# TODO throttle slider callback time (callback_policy)
 
 
 import numpy as np
@@ -200,7 +202,7 @@ class Dashboard():
         self.data.patch(self.patch_data_l())
         sel = self.data.selected.indices
         if sel:
-            self.errors.data = self.gen_error(sel[0])
+            self.errors.patch(self.patch_error_l(sel[0]))
             self.details.text = self.gen_details(sel[0])
 
     # #########################################################################
@@ -339,12 +341,20 @@ class Dashboard():
             W_y = self.data.data['y_W'][index]
             K_ex = self._data.loc[mat, (self.g1, 'eKh')]
             K_ey = self._data.loc[mat, (self.g2, 'eKh')]
-            L_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.lp)
-            L_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.lp)
-            W_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.p1) + \
-                get_err(self._data.loc[mat, (self.g1, 'eL')], self.p2)
-            W_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.p1) + \
-                get_err(self._data.loc[mat, (self.g2, 'eL')], self.p2)
+            if np.isnan(L_x) or np.isnan(L_y):
+                L_x, L_y = 0, 0
+                L_ex, L_ey = 0, 0
+            else:
+                L_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.lp)
+                L_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.lp)
+            if np.isnan(W_x) or np.isnan(W_y):
+                W_x, W_y = 0, 0
+                W_ex, W_ey = 0, 0
+            else:
+                W_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.p1) + \
+                    get_err(self._data.loc[mat, (self.g1, 'eL')], self.p2)
+                W_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.p1) + \
+                    get_err(self._data.loc[mat, (self.g2, 'eL')], self.p2)
 
             return {
                 'labels': [mat, mat],
@@ -364,6 +374,74 @@ class Dashboard():
                 'W_y0': [W_y, W_y - W_ey],
                 'W_x1': [W_x + W_ex, W_x],
                 'W_y1': [W_y, W_y + W_ey],
+            }
+
+    def patch_error_l(self, index=None):
+        if index is None:
+            return {
+                # loading data
+                'L_x0': [(slice(None), [])],
+                'L_y0': [(slice(None), [])],
+                'L_x1': [(slice(None), [])],
+                'L_y1': [(slice(None), [])],
+            }
+        else:
+            def get_err(x, y):
+                if not x:
+                    return np.nan
+                elif len(x) <= y:
+                    return np.nan
+                return x[y]
+            mat = self.data.data['labels'][index]
+            K_ex = self._data.loc[mat, (self.g1, 'eKh')]
+            K_ey = self._data.loc[mat, (self.g2, 'eKh')]
+            if np.isnan(L_x) or np.isnan(L_y):
+                L_x, L_y = 0, 0
+                L_ex, L_ey = 0, 0
+            else:
+                L_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.lp)
+                L_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.lp)
+            return {
+                # loading data
+                'L_x0': [(slice(None), [L_x - L_ex, L_x])],
+                'L_y0': [(slice(None), [L_y, L_y - L_ey])],
+                'L_x1': [(slice(None), [L_x + L_ex, L_x])],
+                'L_y1': [(slice(None), [L_y, L_y + L_ey])],
+            }
+
+    def patch_error_wc(self, index=None):
+        if index is None:
+            return {
+                # loading data
+                'W_x0': [(slice(None), [])],
+                'W_y0': [(slice(None), [])],
+                'W_x1': [(slice(None), [])],
+                'W_y1': [(slice(None), [])],
+            }
+        else:
+            def get_err(x, y):
+                if not x:
+                    return np.nan
+                elif len(x) <= y:
+                    return np.nan
+                return x[y]
+            mat = self.data.data['labels'][index]
+            W_x = self.data.data['x_W'][index]
+            W_y = self.data.data['y_W'][index]
+            if np.isnan(W_x) or np.isnan(W_y):
+                W_x, W_y = 0, 0
+                W_ex, W_ey = 0, 0
+            else:
+                W_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.p1) + \
+                    get_err(self._data.loc[mat, (self.g1, 'eL')], self.p2)
+                W_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.p1) + \
+                    get_err(self._data.loc[mat, (self.g2, 'eL')], self.p2)
+            return {
+                # loading data
+                'W_x0': [(slice(None), [W_x - W_ex, W_x])],
+                'W_y0': [(slice(None), [W_y, W_y - W_ey])],
+                'W_x1': [(slice(None), [W_x + W_ex, W_x])],
+                'W_y1': [(slice(None), [W_y, W_y + W_ey])],
             }
 
     # #########################################################################

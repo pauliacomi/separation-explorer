@@ -12,7 +12,6 @@
             "args": [
                 "serve",
                 "${workspaceFolder}",
-                "--show"
             ]
         }
     ]
