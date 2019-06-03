@@ -1,10 +1,3 @@
-# labels not being generated
-
-# BUG: Do not allow more than one point to be selected (when overlaid)
-# BUG: error bars remain when there is no point
-# TODO make display table responsive
-
-
 import numpy as np
 
 from bokeh.plotting import figure
@@ -111,7 +104,9 @@ class Dashboard():
         wc_slider.on_change('value_throttled', self.wc_callback)
 
         # Material details
-        self.details = Div(text=self.gen_details())
+        self.details = Div(
+            text=self.gen_details(),
+            style={'width': '100%'})
 
         # Isotherm details
         self.details_iso = Div(text="Bottom text", height=400)
@@ -122,7 +117,7 @@ class Dashboard():
                 [self.details, self.p_henry],
                 [self.p_loading, self.p_wc]],
                 sizing_mode='scale_width')],
-            [widgetbox(children=[p_slider, wc_slider])],
+            [p_slider, wc_slider],
             # [gridplot([[self.p_g0iso, self.p_g1iso]])],
             [self.details_iso],
         ], sizing_mode='scale_width')
@@ -480,17 +475,24 @@ class Dashboard():
     def selection_callback(self, attr, old, new):
 
         # Check if the user has selected a point
-        if len(new) == 1:
+        if len(new) > 1:
 
-            # Display error points:
-            self.errors.data = self.gen_error(new[0])
+            # we only get the first point
+            self.data.selected.update(indices=[new[0]])
 
-            # Generate material details
-            self.details.text = self.gen_details(new[0])
+        elif len(new) == 0:
 
-        else:
             # Remove error points:
             self.errors.data = self.gen_error()
 
             # Remove material details
             self.details.text = self.gen_details()
+
+            # done here
+            return
+
+        # Display error points:
+        self.errors.data = self.gen_error(new[0])
+
+        # Generate material details
+        self.details.text = self.gen_details(new[0])
