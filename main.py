@@ -1,7 +1,4 @@
-import json
 import os
-
-import pandas as pd
 from bokeh.io import curdoc
 
 from jinja2 import Environment, FileSystemLoader
@@ -15,6 +12,8 @@ j2_env = Environment(
 
 def load_data():
     """Load explorer data."""
+    import json
+    import pandas as pd
 
     with open(os.path.join(
             os.path.dirname(__file__), 'data', 'data.json')) as file:
@@ -30,15 +29,13 @@ def load_data():
 
 
 doc = curdoc()
-doc.title = "Graphs"
-data = load_data()
-dash = Dashboard(doc, data,
+doc.title = "Separation explorer"
+dash = Dashboard(doc, load_data(),
                  t_tooltip=j2_env.get_template('tooltip.html'),
                  t_matdet=j2_env.get_template('mat_details.html'),
                  t_isodet=j2_env.get_template('mat_isotherms.html')
                  )
 doc.add_root(dash.dash_layout)
 
-# del doc
-# del dash
-# del data
+del doc
+del dash
