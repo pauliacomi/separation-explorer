@@ -3,7 +3,6 @@
 # BUG: Do not allow more than one point to be selected (when overlaid)
 # BUG: error bars remain when there is no point
 # TODO make display table responsive
-# TODO throttle slider callback time (callback_policy)
 
 
 import numpy as np
@@ -97,13 +96,19 @@ class Dashboard():
 
         # Pressure slider
         p_slider = Slider(title="Pressure", value=0.5,
-                          start=0.5, end=20, step=0.5)
-        p_slider.on_change('value', self.pressure_callback)
+                          start=0.5, end=20, step=0.5,
+                          callback_policy='throttle',
+                          callback_throttle=500,
+                          )
+        p_slider.on_change('value_throttled', self.pressure_callback)
 
         # Working capacity slider
-        wc_slider = RangeSlider(title="Working capacity", value=(0.5, 5),
-                                start=0.5, end=20, step=0.5)
-        wc_slider.on_change('value', self.wc_callback)
+        wc_slider = RangeSlider(title="Working capacity",
+                                value=(0.5, 5),
+                                start=0.5, end=20, step=0.5,
+                                callback_policy='throttle',
+                                callback_throttle=500,)
+        wc_slider.on_change('value_throttled', self.wc_callback)
 
         # Material details
         self.details = Div(text=self.gen_details())
@@ -392,13 +397,13 @@ class Dashboard():
                 elif len(x) <= y:
                     return np.nan
                 return x[y]
-            mat = self.data.data['labels'][index]
-            K_ex = self._data.loc[mat, (self.g1, 'eKh')]
-            K_ey = self._data.loc[mat, (self.g2, 'eKh')]
+            L_x = self.data.data['x_L'][index]
+            L_y = self.data.data['y_L'][index]
             if np.isnan(L_x) or np.isnan(L_y):
                 L_x, L_y = 0, 0
                 L_ex, L_ey = 0, 0
             else:
+                mat = self.data.data['labels'][index]
                 L_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.lp)
                 L_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.lp)
             return {
@@ -425,13 +430,13 @@ class Dashboard():
                 elif len(x) <= y:
                     return np.nan
                 return x[y]
-            mat = self.data.data['labels'][index]
             W_x = self.data.data['x_W'][index]
             W_y = self.data.data['y_W'][index]
             if np.isnan(W_x) or np.isnan(W_y):
                 W_x, W_y = 0, 0
                 W_ex, W_ey = 0, 0
             else:
+                mat = self.data.data['labels'][index]
                 W_ex = get_err(self._data.loc[mat, (self.g1, 'eL')], self.p1) + \
                     get_err(self._data.loc[mat, (self.g1, 'eL')], self.p2)
                 W_ey = get_err(self._data.loc[mat, (self.g2, 'eL')], self.p1) + \
