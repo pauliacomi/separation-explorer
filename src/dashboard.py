@@ -14,16 +14,15 @@ from bokeh.palettes import Spectral10 as palette
 
 class Dashboard():
 
-    def __init__(self, doc, data, **templates):
+    def __init__(self, data, **templates):
 
         # Save templates
         self.t_tooltip = templates["t_tooltip"]
         self.t_matdet = templates["t_matdet"]
         self.t_isodet = templates["t_isodet"]
 
-        # Save references for thread access
+        # Save reference
         self._df = data
-        self._doc = doc
 
         # Gas definitions
         gases = list(self._df.columns.levels[0])
@@ -146,8 +145,8 @@ class Dashboard():
         graph.segment(
             '{0}_x0'.format(ind), '{0}_y0'.format(ind),
             '{0}_x1'.format(ind), '{0}_y1'.format(ind),
-            source=self.errors, 
-            color="black", line_width=2, 
+            source=self.errors,
+            color="black", line_width=2,
             line_cap='square', line_dash='dotted')
 
         # Colorbar

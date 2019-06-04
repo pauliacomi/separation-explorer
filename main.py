@@ -30,7 +30,7 @@ def load_data():
 
 doc = curdoc()
 doc.title = "Separation explorer"
-dash = Dashboard(doc, load_data(),
+dash = Dashboard(load_data(),
                  t_tooltip=j2_env.get_template('tooltip.html'),
                  t_matdet=j2_env.get_template('mat_details.html'),
                  t_isodet=j2_env.get_template('mat_isotherms.html')
