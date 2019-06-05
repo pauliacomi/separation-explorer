@@ -1,5 +1,3 @@
-# TODO add all isotherms to the "database"
-
 import numpy as np
 
 from bokeh.plotting import figure
