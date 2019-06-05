@@ -1,28 +1,36 @@
-# TODO: add (or not) isotherms
+# TODO add all isotherms to the "database"
 
 import numpy as np
 
 from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
-from bokeh.models import Slider, RangeSlider, Div, Select
+from bokeh.models import Slider, RangeSlider, Div, Paragraph, Select
 from bokeh.models import Circle, ColorBar, HoverTool
 from bokeh.models import ColumnDataSource
 from bokeh.models import LogTicker
 from bokeh.transform import log_cmap
-from bokeh.palettes import Spectral10 as palette
+from bokeh.palettes import viridis as gen_palette
+
+from itertools import cycle
+
+from helpers import load_isotherm, load_data, j2_env
+from functools import partial
+from threading import Thread
+from tornado import gen
 
 
 class Dashboard():
 
-    def __init__(self, data, **templates):
+    def __init__(self, doc):
 
         # Save templates
-        self.t_tooltip = templates["t_tooltip"]
-        self.t_matdet = templates["t_matdet"]
-        self.t_isodet = templates["t_isodet"]
+        self.t_tooltip = j2_env.get_template('tooltip.html')
+        self.t_matdet = j2_env.get_template('mat_details.html')
+        self.t_isodet = j2_env.get_template('mat_isotherms.html')
 
         # Save reference
-        self._df = data
+        self._df = load_data()
+        self.doc = doc
 
         # Gas definitions
         gases = list(self._df.columns.levels[0])
@@ -94,8 +102,12 @@ class Dashboard():
             text=self.gen_details(),
             style={'width': '100%'})
 
-        # Isotherm details
-        # self.details_iso = Div(text="Bottom text", height=400)
+        # Isotherms
+        self.s_g1iso = ColumnDataSource(data=self.gen_isos())
+        self.s_g2iso = ColumnDataSource(data=self.gen_isos())
+        self.p_g1iso = self.bottom_graph(self.s_g1iso, self.g1)
+        self.p_g2iso = self.bottom_graph(self.s_g2iso, self.g2)
+        self.c_cyc = cycle(gen_palette(20))
 
         self.dash_layout = layout([
             [g1_sel, g2_sel],
@@ -104,8 +116,15 @@ class Dashboard():
                 [self.p_loading, self.p_wc]],
                 sizing_mode='scale_width')],
             [p_slider, wc_slider],
-            # [gridplot([[self.p_g0iso, self.p_g1iso]])],
-            # [self.details_iso],
+            [Paragraph(text="""
+                Once a material has been selected, the graphs below
+                show the isotherms from the ISODB database that have been
+                used for the calculations. Click on them to be directed 
+                to the NIST page for each isotherm.
+            """)],
+            [gridplot(
+                [[self.p_g1iso, self.p_g2iso]],
+                sizing_mode='scale_width')],
         ], sizing_mode='scale_width')
 
     def top_graph(self, ind, title, **kwargs):
@@ -159,6 +178,24 @@ class Dashboard():
 
         return graph, rend
 
+    def bottom_graph(self, source, gas):
+
+        graph = figure(tools="pan,wheel_zoom,tap,reset",
+                       active_scroll="wheel_zoom",
+                       plot_width=400, plot_height=250,
+                       title='Isotherms {0}'.format(gas))
+        graph.multi_line('x', 'y', source=source,
+                         alpha=0.6, line_width=3,
+                         hover_line_alpha=1.0,
+                         line_color='color')
+        graph.add_tools(HoverTool(show_arrow=False,
+                                  line_policy='nearest',
+                                  tooltips='@labels'))
+        graph.xaxis.axis_label = 'Pressure (bar)'
+        graph.yaxis.axis_label = 'Uptake (mmol/g)'
+
+        return graph
+
     def top_graph_labels(self):
         self.p_loading.xaxis.axis_label = '{0} (mmol/g)'.format(self.g1)
         self.p_loading.yaxis.axis_label = '{0} (mmol/g)'.format(self.g2)
@@ -183,9 +220,12 @@ class Dashboard():
 
         # # Update labels
         self.top_graph_labels()
+        self.p_g1iso.title.text = 'Isotherms {0}'.format(self.g1)
+        self.p_g2iso.title.text = 'Isotherms {0}'.format(self.g2)
 
         # # Update bottom
-        # self.purge_isos()
+        self.s_g1iso.data = self.gen_isos()
+        self.s_g2iso.data = self.gen_isos()
 
     # #########################################################################
     # Set up pressure slider and callback
@@ -463,6 +503,17 @@ class Dashboard():
             return self.t_matdet.render(**data)
 
     # #########################################################################
+    # Iso generator
+
+    def gen_isos(self):
+        return {
+            'labels': [],
+            'x': [],
+            'y': [],
+            'color': [],
+        }
+
+    # #########################################################################
     # Callback for selection
 
     def selection_callback(self, attr, old, new):
@@ -481,6 +532,13 @@ class Dashboard():
             # Remove material details
             self.details.text = self.gen_details()
 
+            # Reset bottom graphs
+            self.s_g1iso.data = self.gen_isos()
+            self.s_g2iso.data = self.gen_isos()
+            self.s_g1iso.selected.update(indices=[])
+            self.s_g2iso.selected.update(indices=[])
+            # self.doc.add_next_tick_callback
+
             # done here
             return
 
@@ -489,3 +547,65 @@ class Dashboard():
 
         # Generate material details
         self.details.text = self.gen_details(new[0])
+
+        # Reset bottom graphs
+        self.s_g1iso.data = self.gen_isos()
+        self.s_g2iso.data = self.gen_isos()
+        self.s_g1iso.selected.update(indices=[])
+        self.s_g2iso.selected.update(indices=[])
+
+        # Generate bottom graphs
+        Thread(target=self.populate_isos, args=[new[0], 'g1']).start()
+        Thread(target=self.populate_isos, args=[new[0], 'g2']).start()
+
+    # #########################################################################
+    # Isotherm interactions
+
+    def populate_isos(self, index=None, which=None):
+
+        if index is None:
+            return
+
+        else:
+            mat = self.data.data['labels'][index]
+
+            if which == 'g1':
+
+                for iso in self._df.loc[mat, (self.g1, 'iso')]:
+
+                    parsed = load_isotherm(iso)
+
+                    # update the document from callback
+                    if parsed:
+                        self.doc.add_next_tick_callback(
+                            partial(self.iso_update_g1, iso=parsed))
+
+            elif which == 'g2':
+
+                for iso in self._df.loc[mat, (self.g2, 'iso')]:
+                    parsed = load_isotherm(iso)
+
+                    # update the document from callback
+                    if parsed:
+                        self.doc.add_next_tick_callback(
+                            partial(self.iso_update_g2, iso=parsed))
+            else:
+                raise Exception
+
+    @gen.coroutine
+    def iso_update_g1(self, iso):
+        self.s_g1iso.stream({
+            'labels': [iso[0]],
+            'x': [iso[2]],
+            'y': [iso[1]],
+            'color': [next(self.c_cyc)],
+        })
+
+    @gen.coroutine
+    def iso_update_g2(self, iso):
+        self.s_g2iso.stream({
+            'labels': [iso[0]],
+            'x': [iso[2]],
+            'y': [iso[1]],
+            'color': [next(self.c_cyc)],
+        })
