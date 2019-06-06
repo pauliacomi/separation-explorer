@@ -3,7 +3,7 @@ import numpy as np
 from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
 from bokeh.models import Slider, RangeSlider, Div, Paragraph, Select
-from bokeh.models import Circle, ColorBar, HoverTool
+from bokeh.models import Circle, ColorBar, HoverTool, TapTool, OpenURL
 from bokeh.models import ColumnDataSource
 from bokeh.models import LogTicker
 from bokeh.transform import log_cmap
@@ -117,8 +117,9 @@ class Dashboard():
             [Paragraph(text="""
                 Once a material has been selected, the graphs below
                 show the isotherms from the ISODB database that have been
-                used for the calculations. Click on them to be directed 
-                to the NIST page for each isotherm.
+                used for calculations. Click on them to be directed
+                to the NIST page for the corresponding publication which
+                contains detailed information about the isotherm source.
             """)],
             [gridplot(
                 [[self.p_g1iso, self.p_g2iso]],
@@ -182,13 +183,19 @@ class Dashboard():
                        active_scroll="wheel_zoom",
                        plot_width=400, plot_height=250,
                        title='Isotherms {0}'.format(gas))
-        graph.multi_line('x', 'y', source=source,
-                         alpha=0.6, line_width=3,
-                         hover_line_alpha=1.0,
-                         line_color='color')
+        rend = graph.multi_line('x', 'y', source=source,
+                                alpha=0.6, line_width=3,
+                                hover_line_alpha=1.0,
+                                hover_line_color="black",
+                                line_color='color')
+
+        url = "https://adsorption.nist.gov/isodb/index.php?DOI=@doi#biblio"
+        graph.add_tools(TapTool(renderers=[rend],
+                                callback=OpenURL(url=url)))
         graph.add_tools(HoverTool(show_arrow=False,
                                   line_policy='nearest',
                                   tooltips='@labels'))
+
         graph.xaxis.axis_label = 'Pressure (bar)'
         graph.yaxis.axis_label = 'Uptake (mmol/g)'
 
@@ -506,6 +513,7 @@ class Dashboard():
     def gen_isos(self):
         return {
             'labels': [],
+            'doi': [],
             'x': [],
             'y': [],
             'color': [],
@@ -596,6 +604,7 @@ class Dashboard():
             'labels': [iso[0]],
             'x': [iso[2]],
             'y': [iso[1]],
+            'doi': [iso[3]],
             'color': [next(self.c_cyc)],
         })
 
@@ -605,5 +614,6 @@ class Dashboard():
             'labels': [iso[0]],
             'x': [iso[2]],
             'y': [iso[1]],
+            'doi': [iso[3]],
             'color': [next(self.c_cyc)],
         })
