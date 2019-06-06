@@ -3,7 +3,8 @@ import numpy as np
 from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
 from bokeh.models import Slider, RangeSlider, Div, Paragraph, Select
-from bokeh.models import Circle, ColorBar, HoverTool, TapTool, OpenURL
+from bokeh.models import Circle
+from bokeh.models import ColorBar, HoverTool, TapTool, OpenURL, Range1d
 from bokeh.models import ColumnDataSource
 from bokeh.models import LogTicker
 from bokeh.transform import log_cmap
@@ -182,6 +183,7 @@ class Dashboard():
         graph = figure(tools="pan,wheel_zoom,tap,reset",
                        active_scroll="wheel_zoom",
                        plot_width=400, plot_height=250,
+                       x_range=(-0.1, 1), y_range=(-0.1, 1),
                        title='Isotherms {0}'.format(gas))
         rend = graph.multi_line('x', 'y', source=source,
                                 alpha=0.6, line_width=3,
@@ -543,7 +545,10 @@ class Dashboard():
             self.s_g2iso.data = self.gen_isos()
             self.s_g1iso.selected.update(indices=[])
             self.s_g2iso.selected.update(indices=[])
-            # self.doc.add_next_tick_callback
+            self.p_g1iso.x_range.end = 1
+            self.p_g1iso.y_range.end = 1
+            self.p_g2iso.x_range.end = 1
+            self.p_g2iso.y_range.end = 1
 
             # done here
             return
@@ -559,6 +564,10 @@ class Dashboard():
         self.s_g2iso.data = self.gen_isos()
         self.s_g1iso.selected.update(indices=[])
         self.s_g2iso.selected.update(indices=[])
+        self.p_g1iso.x_range.end = 1
+        self.p_g1iso.y_range.end = 1
+        self.p_g2iso.x_range.end = 1
+        self.p_g2iso.y_range.end = 1
 
         # Generate bottom graphs
         Thread(target=self.populate_isos, args=[new[0], 'g1']).start()
@@ -607,6 +616,10 @@ class Dashboard():
             'doi': [iso[3]],
             'color': [next(self.c_cyc)],
         })
+        if float(iso[2][-1]) > self.p_g1iso.x_range.end:
+            self.p_g1iso.x_range.end = float(iso[2][-1])
+        if float(iso[1][-1]) > self.p_g1iso.y_range.end:
+            self.p_g1iso.y_range.end = float(iso[1][-1])
 
     @gen.coroutine
     def iso_update_g2(self, iso):
@@ -617,3 +630,7 @@ class Dashboard():
             'doi': [iso[3]],
             'color': [next(self.c_cyc)],
         })
+        if float(iso[2][-1]) > self.p_g2iso.x_range.end:
+            self.p_g2iso.x_range.end = float(iso[2][-1])
+        if float(iso[1][-1]) > self.p_g2iso.y_range.end:
+            self.p_g2iso.y_range.end = float(iso[1][-1])
