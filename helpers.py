@@ -10,7 +10,7 @@ j2_env = Environment(
 
 def load_isotherm(filename):
     """Load a particular isotherm."""
-    path = os.path.join(os.path.dirname(__file__), 'data', 'isotherms',
+    path = os.path.join(os.path.dirname(__file__), 'data', 'isotherms-aw',
                         '{0}.json'.format(filename))
 
     try:
@@ -19,10 +19,10 @@ def load_isotherm(filename):
     except Exception:
         return None
 
-    name = iso['filename']
+    name = iso['material_name'] + iso['material_batch']
     pressure = [a['loading'] for a in iso['isotherm_data']]
     loading = [a['pressure'] for a in iso['isotherm_data']]
-    doi = iso['DOI']
+    doi = iso['material_name']
 
     return name, pressure, loading, doi
 
@@ -33,7 +33,7 @@ def load_data():
     import pandas as pd
 
     with open(os.path.join(
-            os.path.dirname(__file__), 'data', 'data.json')) as file:
+            os.path.dirname(__file__), 'data', 'data-aw.json')) as file:
         data = json.load(file)
 
     data_new = {
