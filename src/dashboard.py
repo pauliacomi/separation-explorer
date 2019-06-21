@@ -4,8 +4,9 @@ from bokeh.plotting import figure
 from bokeh.layouts import widgetbox, gridplot, layout
 from bokeh.models import Slider, RangeSlider, Div, Paragraph, Select
 from bokeh.models import Circle
-from bokeh.models import ColorBar, HoverTool, TapTool, OpenURL, Range1d
+from bokeh.models import ColorBar, HoverTool, TapTool, OpenURL, Range1d, LabelSet
 from bokeh.models import ColumnDataSource
+from bokeh.models import DataTable, TableColumn, NumberFormatter
 from bokeh.models import LogTicker
 from bokeh.transform import log_cmap
 from bokeh.palettes import viridis as gen_palette
@@ -24,7 +25,6 @@ class Dashboard():
 
         # Save templates
         self.t_tooltip = j2_env.get_template('tooltip.html')
-        self.t_matdet = j2_env.get_template('mat_details.html')
         self.t_isodet = j2_env.get_template('mat_isotherms.html')
 
         # Save reference
@@ -96,10 +96,30 @@ class Dashboard():
                                 callback_throttle=500,)
         wc_slider.on_change('value_throttled', self.wc_callback)
 
-        # Material details
-        self.details = Div(
-            text=self.gen_details(),
-            style={'width': '100%'})
+        # Material datatable
+        self.details = DataTable(
+            columns=[
+                TableColumn(field="labels", title="Material", width=100),
+                TableColumn(field="x_K", title="HK1",
+                            formatter=NumberFormatter(format='‘0.0a’')),
+                TableColumn(field="y_K", title="HK2",
+                            formatter=NumberFormatter(format='‘0.0a’')),
+                TableColumn(field="x_L", title="L1",
+                            formatter=NumberFormatter(format='‘0.0a’')),
+                TableColumn(field="y_L", title="L1",
+                            formatter=NumberFormatter(format='‘0.0a’')),
+                TableColumn(field="x_W", title="WC1",
+                            formatter=NumberFormatter(format='‘0.0a’')),
+                TableColumn(field="y_W", title="WC2",
+                            formatter=NumberFormatter(format='‘0.0a’')),
+            ],
+            source=self.data,
+            index_position=None,
+            fit_columns=True,
+            scroll_to_selection=True,
+            width=400,
+            selectable='checkbox',
+        )
 
         # Isotherms
         self.s_g1iso = ColumnDataSource(data=self.gen_isos())
@@ -167,6 +187,17 @@ class Dashboard():
             source=self.errors,
             color="black", line_width=2,
             line_cap='square', line_dash='dotted')
+
+        # Selection labels
+        labels = LabelSet(
+            x='{0}_x'.format(ind), y='{0}_y'.format(ind),
+            source=self.errors,
+            text='labels', level='glyph',
+            x_offset=5, y_offset=5,
+            render_mode='canvas',
+            text_font_size='8pt',
+        )
+        graph.add_layout(labels)
 
         # Colorbar
         graph.add_layout(ColorBar(
@@ -242,8 +273,7 @@ class Dashboard():
         self.data.patch(self.patch_data_l())
         sel = self.data.selected.indices
         if sel:
-            self.errors.patch(self.patch_error_l(sel[0]))
-            self.details.text = self.gen_details(sel[0])
+            self.errors.patch(self.patch_error_l(sel))
 
     # #########################################################################
     # Set up working capacity slider and callback
@@ -253,8 +283,7 @@ class Dashboard():
         self.data.patch(self.patch_data_w())
         sel = self.data.selected.indices
         if sel:
-            self.errors.data = self.gen_error(sel[0])
-            self.details.text = self.gen_details(sel[0])
+            self.errors.data = self.patch_error_wc(sel)
 
     # #########################################################################
     # Data generator
@@ -355,16 +384,21 @@ class Dashboard():
     # #########################################################################
     # Error generator
 
-    def gen_error(self, index=None):
+    def gen_error(self, indices=None):
 
-        if index is None:
+        if indices is None:
             return {
+                'labels': [],
+                'K_x': [], 'K_y': [],
+                'L_x': [], 'L_y': [],
+                'W_x': [], 'W_y': [],
                 'K_x0': [], 'K_y0': [], 'K_x1': [], 'K_y1': [],
                 'L_x0': [], 'L_y0': [], 'L_x1': [], 'L_y1': [],
                 'W_x0': [], 'W_y0': [], 'W_x1': [], 'W_y1': [],
             }
 
         else:
+
             def get_err(x, y):
                 if not x:
                     return np.nan
@@ -372,54 +406,90 @@ class Dashboard():
                     return np.nan
                 return x[y]
 
-            mat = self.data.data['labels'][index]
-            K_x = self.data.data['x_K'][index]
-            K_y = self.data.data['y_K'][index]
-            L_x = self.data.data['x_L'][index]
-            L_y = self.data.data['y_L'][index]
-            W_x = self.data.data['x_W'][index]
-            W_y = self.data.data['y_W'][index]
-            K_ex = self._df.loc[mat, (self.g1, 'eKh')]
-            K_ey = self._df.loc[mat, (self.g2, 'eKh')]
-            if np.isnan(L_x) or np.isnan(L_y):
-                L_x, L_y = 0, 0
-                L_ex, L_ey = 0, 0
-            else:
-                L_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.lp)
-                L_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.lp)
-            if np.isnan(W_x) or np.isnan(W_y):
-                W_x, W_y = 0, 0
-                W_ex, W_ey = 0, 0
-            else:
-                W_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.p1) + \
-                    get_err(self._df.loc[mat, (self.g1, 'eL')], self.p2)
-                W_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.p1) + \
-                    get_err(self._df.loc[mat, (self.g2, 'eL')], self.p2)
+            mats = []
+            K_X, K_Y, L_X, L_Y, W_X, W_Y = [], [], [], [], [], []
+            K_X1, K_Y1, K_X2, K_Y2 = [], [], [], []
+            L_X1, L_Y1, L_X2, L_Y2 = [], [], [], []
+            W_X1, W_Y1, W_X2, W_Y2 = [], [], [], []
+
+            for index in indices:
+
+                mat = self.data.data['labels'][index]
+                K_x = self.data.data['x_K'][index]
+                K_y = self.data.data['y_K'][index]
+                L_x = self.data.data['x_L'][index]
+                L_y = self.data.data['y_L'][index]
+                W_x = self.data.data['x_W'][index]
+                W_y = self.data.data['y_W'][index]
+                K_ex = self._df.loc[mat, (self.g1, 'eKh')]
+                K_ey = self._df.loc[mat, (self.g2, 'eKh')]
+                if np.isnan(L_x) or np.isnan(L_y):
+                    L_x, L_y = 0, 0
+                    L_ex, L_ey = 0, 0
+                else:
+                    L_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.lp)
+                    L_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.lp)
+                if np.isnan(W_x) or np.isnan(W_y):
+                    W_x, W_y = 0, 0
+                    W_ex, W_ey = 0, 0
+                else:
+                    W_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.p1) + \
+                        get_err(self._df.loc[mat, (self.g1, 'eL')], self.p2)
+                    W_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.p1) + \
+                        get_err(self._df.loc[mat, (self.g2, 'eL')], self.p2)
+
+                mats.extend([mat, mat])
+                K_X.extend([K_x, K_x])
+                K_Y.extend([K_y, K_y])
+                L_X.extend([L_x, L_x])
+                L_Y.extend([L_y, L_y])
+                W_X.extend([W_x, W_x])
+                W_Y.extend([W_y, W_y])
+                # henry data
+                K_X1.extend([K_x - K_ex, K_x])
+                K_Y1.extend([K_y, K_y - K_ey])
+                K_X2.extend([K_x + K_ex, K_x])
+                K_Y2.extend([K_y, K_y + K_ey])
+                # loading data
+                L_X1.extend([L_x - L_ex, L_x])
+                L_Y1.extend([L_y, L_y - L_ey])
+                L_X2.extend([L_x + L_ex, L_x])
+                L_Y2.extend([L_y, L_y + L_ey])
+                # working capacity data
+                W_X1.extend([W_x - W_ex, W_x])
+                W_Y1.extend([W_y, W_y - W_ey])
+                W_X2.extend([W_x + W_ex, W_x])
+                W_Y2.extend([W_y, W_y + W_ey])
 
             return {
-                'labels': [mat, mat],
-
+                # labels
+                'labels': mats,
+                'K_x': K_X, 'K_y': K_Y,
+                'L_x': L_X, 'L_y': L_Y,
+                'W_x': W_X, 'W_y': W_Y,
                 # henry data
-                'K_x0': [K_x - K_ex, K_x],
-                'K_y0': [K_y, K_y - K_ey],
-                'K_x1': [K_x + K_ex, K_x],
-                'K_y1': [K_y, K_y + K_ey],
+                'K_x0': K_X1,
+                'K_y0': K_Y1,
+                'K_x1': K_X2,
+                'K_y1': K_Y2,
                 # loading data
-                'L_x0': [L_x - L_ex, L_x],
-                'L_y0': [L_y, L_y - L_ey],
-                'L_x1': [L_x + L_ex, L_x],
-                'L_y1': [L_y, L_y + L_ey],
+                'L_x0': L_X1,
+                'L_y0': L_Y1,
+                'L_x1': L_X2,
+                'L_y1': L_Y2,
                 # working capacity data
-                'W_x0': [W_x - W_ex, W_x],
-                'W_y0': [W_y, W_y - W_ey],
-                'W_x1': [W_x + W_ex, W_x],
-                'W_y1': [W_y, W_y + W_ey],
+                'W_x0': W_X1,
+                'W_y0': W_Y1,
+                'W_x1': W_X2,
+                'W_y1': W_Y2,
             }
 
-    def patch_error_l(self, index=None):
-        if index is None:
+    def patch_error_l(self, indices=None):
+        if indices is None:
             return {
                 # loading data
+                'L_x': [(slice(None), [])],
+                'L_y': [(slice(None), [])],
                 'L_x0': [(slice(None), [])],
                 'L_y0': [(slice(None), [])],
                 'L_x1': [(slice(None), [])],
@@ -432,27 +502,45 @@ class Dashboard():
                 elif len(x) <= y:
                     return np.nan
                 return x[y]
-            L_x = self.data.data['x_L'][index]
-            L_y = self.data.data['y_L'][index]
-            if np.isnan(L_x) or np.isnan(L_y):
-                L_x, L_y = 0, 0
-                L_ex, L_ey = 0, 0
-            else:
-                mat = self.data.data['labels'][index]
-                L_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.lp)
-                L_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.lp)
+
+            L_X, L_Y = [], []
+            L_X1, L_Y1, L_X2, L_Y2 = [], [], [], []
+
+            for index in indices:
+
+                L_x = self.data.data['x_L'][index]
+                L_y = self.data.data['y_L'][index]
+                if np.isnan(L_x) or np.isnan(L_y):
+                    L_x, L_y = 0, 0
+                    L_ex, L_ey = 0, 0
+                else:
+                    mat = self.data.data['labels'][index]
+                    L_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.lp)
+                    L_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.lp)
+
+                L_X.extend([L_x, L_x])
+                L_Y.extend([L_y, L_y])
+                L_X1.extend([L_x - L_ex, L_x])
+                L_Y1.extend([L_y, L_y - L_ey])
+                L_X2.extend([L_x + L_ex, L_x])
+                L_Y2.extend([L_y, L_y + L_ey])
+
             return {
                 # loading data
-                'L_x0': [(slice(None), [L_x - L_ex, L_x])],
-                'L_y0': [(slice(None), [L_y, L_y - L_ey])],
-                'L_x1': [(slice(None), [L_x + L_ex, L_x])],
-                'L_y1': [(slice(None), [L_y, L_y + L_ey])],
+                'L_x': [(slice(None), L_X)],
+                'L_y': [(slice(None), L_Y)],
+                'L_x0': [(slice(None), L_X1)],
+                'L_y0': [(slice(None), L_Y1)],
+                'L_x1': [(slice(None), L_X2)],
+                'L_y1': [(slice(None), L_Y2)],
             }
 
-    def patch_error_wc(self, index=None):
-        if index is None:
+    def patch_error_wc(self, indices=None):
+        if indices is None:
             return {
                 # loading data
+                'W_x': [(slice(None), [])],
+                'W_y': [(slice(None), [])],
                 'W_x0': [(slice(None), [])],
                 'W_y0': [(slice(None), [])],
                 'W_x1': [(slice(None), [])],
@@ -465,49 +553,40 @@ class Dashboard():
                 elif len(x) <= y:
                     return np.nan
                 return x[y]
-            W_x = self.data.data['x_W'][index]
-            W_y = self.data.data['y_W'][index]
-            if np.isnan(W_x) or np.isnan(W_y):
-                W_x, W_y = 0, 0
-                W_ex, W_ey = 0, 0
-            else:
-                mat = self.data.data['labels'][index]
-                W_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.p1) + \
-                    get_err(self._df.loc[mat, (self.g1, 'eL')], self.p2)
-                W_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.p1) + \
-                    get_err(self._df.loc[mat, (self.g2, 'eL')], self.p2)
+
+            W_X, W_Y = [], []
+            W_X1, W_Y1, W_X2, W_Y2 = [], [], [], []
+
+            for index in indices:
+
+                W_x = self.data.data['x_W'][index]
+                W_y = self.data.data['y_W'][index]
+                if np.isnan(W_x) or np.isnan(W_y):
+                    W_x, W_y = 0, 0
+                    W_ex, W_ey = 0, 0
+                else:
+                    mat = self.data.data['labels'][index]
+                    W_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.p1) + \
+                        get_err(self._df.loc[mat, (self.g1, 'eL')], self.p2)
+                    W_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.p1) + \
+                        get_err(self._df.loc[mat, (self.g2, 'eL')], self.p2)
+
+                W_X.extend([W_x, W_x])
+                W_Y.extend([W_y, W_y])
+                W_X1.extend([W_x - W_ex, W_x])
+                W_Y1.extend([W_y, W_y - W_ey])
+                W_X2.extend([W_x + W_ex, W_x])
+                W_Y2.extend([W_y, W_y + W_ey])
+
             return {
                 # loading data
-                'W_x0': [(slice(None), [W_x - W_ex, W_x])],
-                'W_y0': [(slice(None), [W_y, W_y - W_ey])],
-                'W_x1': [(slice(None), [W_x + W_ex, W_x])],
-                'W_y1': [(slice(None), [W_y, W_y + W_ey])],
+                'W_x': [(slice(None), W_X)],
+                'W_y': [(slice(None), W_Y)],
+                'W_x0': [(slice(None), W_X1)],
+                'W_y0': [(slice(None), W_Y1)],
+                'W_x1': [(slice(None), W_X2)],
+                'W_y1': [(slice(None), W_Y2)],
             }
-
-    # #########################################################################
-    # Text generator
-
-    def gen_details(self, index=None):
-        if index is None:
-            return self.t_matdet.render()
-        else:
-            mat = self.data.data['labels'][index]
-            data = {
-                'material': mat,
-                'gas1': self.g1,
-                'gas2': self.g2,
-                'gas1_niso': len(self._df.loc[mat, (self.g1, 'iso')]),
-                'gas2_niso': len(self._df.loc[mat, (self.g2, 'iso')]),
-                'gas1_load': self.data.data['x_L'][index],
-                'gas2_load': self.data.data['y_L'][index],
-                'gas1_eload': self.errors.data['L_x1'][0] - self.errors.data['L_x1'][1],
-                'gas2_eload': self.errors.data['L_y1'][1] - self.errors.data['L_y1'][0],
-                'gas1_hk': self.data.data['x_K'][index],
-                'gas2_hk': self.data.data['y_K'][index],
-                'gas1_ehk': self.errors.data['K_x1'][0] - self.errors.data['K_x1'][1],
-                'gas2_ehk': self.errors.data['L_y1'][1] - self.errors.data['L_y1'][0],
-            }
-            return self.t_matdet.render(**data)
 
     # #########################################################################
     # Iso generator
@@ -527,18 +606,10 @@ class Dashboard():
     def selection_callback(self, attr, old, new):
 
         # Check if the user has selected a point
-        if len(new) > 1:
-
-            # we only get the first point
-            self.data.selected.update(indices=[new[0]])
-
-        elif len(new) == 0:
+        if len(new) == 0:
 
             # Remove error points:
             self.errors.data = self.gen_error()
-
-            # Remove material details
-            self.details.text = self.gen_details()
 
             # Reset bottom graphs
             self.s_g1iso.data = self.gen_isos()
@@ -554,10 +625,7 @@ class Dashboard():
             return
 
         # Display error points:
-        self.errors.data = self.gen_error(new[0])
-
-        # Generate material details
-        self.details.text = self.gen_details(new[0])
+        self.errors.data = self.gen_error(new)
 
         # Reset bottom graphs
         self.s_g1iso.data = self.gen_isos()
