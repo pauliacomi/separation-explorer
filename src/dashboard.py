@@ -25,16 +25,21 @@ class Dashboard():
 
         # Save templates
         self.t_tooltip = j2_env.get_template('tooltip.html')
-        self.t_isodet = j2_env.get_template('mat_isotherms.html')
 
         # Save reference
-        self._df = load_data()
         self.doc = doc
+
+        # Dataset
+        self._df = load_data()      # Entire dataset
+        self._dfs = None            # Selected gas dataset
 
         # Gas definitions
         gases = list(self._df.columns.levels[0])
         self.g1 = "nitrogen"
         self.g2 = "carbon dioxide"
+
+        # Generate selected gas dataframe
+        self.gen_sel_gas()
 
         # Pressure definitions
         self.lp = 0   # 0.5 bar
@@ -128,6 +133,7 @@ class Dashboard():
         self.p_g2iso = self.bottom_graph(self.s_g2iso, self.g2)
         self.c_cyc = cycle(gen_palette(20))
 
+        # Layout
         self.dash_layout = layout([
             [g1_sel, g2_sel],
             [gridplot([
@@ -147,11 +153,14 @@ class Dashboard():
                 sizing_mode='scale_width')],
         ], sizing_mode='scale_width')
 
+    # #########################################################################
+    # Graph generators
+
     def top_graph(self, ind, title, **kwargs):
 
         # Generate figure dict
         plot_side_size = 400
-        fig_dict = dict(tools="pan,wheel_zoom,tap,reset",
+        fig_dict = dict(tools="pan,wheel_zoom,tap,reset,save",
                         active_scroll="wheel_zoom",
                         plot_width=plot_side_size,
                         plot_height=plot_side_size,
@@ -189,15 +198,14 @@ class Dashboard():
             line_cap='square', line_dash='dotted')
 
         # Selection labels
-        labels = LabelSet(
+        graph.add_layout(LabelSet(
             x='{0}_x'.format(ind), y='{0}_y'.format(ind),
             source=self.errors,
             text='labels', level='glyph',
             x_offset=5, y_offset=5,
             render_mode='canvas',
             text_font_size='8pt',
-        )
-        graph.add_layout(labels)
+        ))
 
         # Colorbar
         graph.add_layout(ColorBar(
@@ -247,21 +255,31 @@ class Dashboard():
     # #########################################################################
     # Selection update
 
+    def gen_sel_gas(self):
+        # Generate specific dataframe
+        sel = self._df[[self.g1, self.g2]]
+        sel = sel[sel[(self.g1, 'iso')].apply(lambda x: len(x) > 0)]
+        sel = sel[sel[(self.g2, 'iso')].apply(lambda x: len(x) > 0)]
+        self._dfs = sel
+
     def new_gas_callback(self):
 
-        # # Reset any selected materials
+        # Generate specific dataframe
+        self.gen_sel_gas()
+
+        # Reset any selected materials
         if self.data.selected.indices:
             self.data.selected.update(indices=[])
 
-        # # Gen data
+        # Gen data
         self.data.data = self.gen_data()
 
-        # # Update labels
+        # Update labels
         self.top_graph_labels()
         self.p_g1iso.title.text = 'Isotherms {0}'.format(self.g1)
         self.p_g2iso.title.text = 'Isotherms {0}'.format(self.g2)
 
-        # # Update bottom
+        # Update bottom
         self.s_g1iso.data = self.gen_isos()
         self.s_g2iso.data = self.gen_isos()
 
@@ -311,32 +329,34 @@ class Dashboard():
                 return np.nan
             return x[self.p1] + x[self.p2]
 
-        return {
-            'labels': self._df.index,
+        ret_dict = {
+            'labels': self._dfs.index,
 
             # henry data
-            'x_K': self._df[self.g1, 'mKh'].values,
-            'y_K': self._df[self.g2, 'mKh'].values,
-            'n_xK': self._df[self.g1, 'lKh'].values,
-            'n_yK': self._df[self.g2, 'lKh'].values,
-            'n_K': self._df[self.g1, 'lKh'].values + self._df[self.g2, 'lKh'].values,
+            'x_K': self._dfs[self.g1, 'mKh'].values,
+            'y_K': self._dfs[self.g2, 'mKh'].values,
+            'n_xK': self._dfs[self.g1, 'lKh'].values,
+            'n_yK': self._dfs[self.g2, 'lKh'].values,
+            'n_K': self._dfs[self.g1, 'lKh'].values + self._dfs[self.g2, 'lKh'].values,
 
             # loading data
-            'x_L': self._df[self.g1, 'mL'].apply(get_loading).values,
-            'y_L': self._df[self.g2, 'mL'].apply(get_loading).values,
-            'n_xL': self._df[self.g1, 'lL'].apply(get_loading).values,
-            'n_yL': self._df[self.g2, 'lL'].apply(get_loading).values,
-            'n_L': self._df[self.g1, 'lL'].apply(get_loading).values +
-            self._df[self.g2, 'lL'].apply(get_loading).values,
+            'x_L': self._dfs[self.g1, 'mL'].apply(get_loading).values,
+            'y_L': self._dfs[self.g2, 'mL'].apply(get_loading).values,
+            'n_xL': self._dfs[self.g1, 'lL'].apply(get_loading).values,
+            'n_yL': self._dfs[self.g2, 'lL'].apply(get_loading).values,
+            'n_L': self._dfs[self.g1, 'lL'].apply(get_loading).values +
+            self._dfs[self.g2, 'lL'].apply(get_loading).values,
 
             # Working capacity data
-            'x_W': self._df[self.g1, 'mL'].apply(get_wc).values,
-            'y_W': self._df[self.g2, 'mL'].apply(get_wc).values,
-            'n_xW': self._df[self.g1, 'lL'].apply(get_nwc).values,
-            'n_yW': self._df[self.g2, 'lL'].apply(get_nwc).values,
-            'n_W': self._df[self.g1, 'lL'].apply(get_nwc).values +\
-            self._df[self.g2, 'lL'].apply(get_nwc).values,
+            'x_W': self._dfs[self.g1, 'mL'].apply(get_wc).values,
+            'y_W': self._dfs[self.g2, 'mL'].apply(get_wc).values,
+            'n_xW': self._dfs[self.g1, 'lL'].apply(get_nwc).values,
+            'n_yW': self._dfs[self.g2, 'lL'].apply(get_nwc).values,
+            'n_W': self._dfs[self.g1, 'lL'].apply(get_nwc).values +\
+            self._dfs[self.g2, 'lL'].apply(get_nwc).values,
         }
+
+        return ret_dict
 
     def patch_data_l(self):
 
@@ -347,14 +367,16 @@ class Dashboard():
                 return np.nan
             return x[self.lp]
 
-        return {
-            'x_L': [(slice(None), self._df[self.g1, 'mL'].apply(get_loading).values)],
-            'y_L': [(slice(None), self._df[self.g2, 'mL'].apply(get_loading).values)],
-            'n_xL': [(slice(None), self._df[self.g1, 'lL'].apply(get_loading).values)],
-            'n_yL': [(slice(None), self._df[self.g2, 'lL'].apply(get_loading).values)],
-            'n_L': [(slice(None), self._df[self.g1, 'lL'].apply(get_loading).values +
-                     self._df[self.g2, 'lL'].apply(get_loading).values)]
+        ret_dict = {
+            'x_L': [(slice(None), self._dfs[self.g1, 'mL'].apply(get_loading).values)],
+            'y_L': [(slice(None), self._dfs[self.g2, 'mL'].apply(get_loading).values)],
+            'n_xL': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_loading).values)],
+            'n_yL': [(slice(None), self._dfs[self.g2, 'lL'].apply(get_loading).values)],
+            'n_L': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_loading).values +
+                     self._dfs[self.g2, 'lL'].apply(get_loading).values)]
         }
+
+        return ret_dict
 
     def patch_data_w(self):
 
@@ -372,14 +394,16 @@ class Dashboard():
                 return np.nan
             return x[self.p1] + x[self.p2]
 
-        return {
-            'x_W': [(slice(None), self._df[self.g1, 'mL'].apply(get_wc).values)],
-            'y_W': [(slice(None), self._df[self.g2, 'mL'].apply(get_wc).values)],
-            'n_xW': [(slice(None), self._df[self.g1, 'lL'].apply(get_nwc).values)],
-            'n_yW': [(slice(None), self._df[self.g2, 'lL'].apply(get_nwc).values)],
-            'n_W': [(slice(None), self._df[self.g1, 'lL'].apply(get_nwc).values +
-                     self._df[self.g2, 'lL'].apply(get_nwc).values)]
+        ret_dict = {
+            'x_W': [(slice(None), self._dfs[self.g1, 'mL'].apply(get_wc).values)],
+            'y_W': [(slice(None), self._dfs[self.g2, 'mL'].apply(get_wc).values)],
+            'n_xW': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_nwc).values)],
+            'n_yW': [(slice(None), self._dfs[self.g2, 'lL'].apply(get_nwc).values)],
+            'n_W': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_nwc).values +
+                     self._dfs[self.g2, 'lL'].apply(get_nwc).values)]
         }
+
+        return ret_dict
 
     # #########################################################################
     # Error generator
@@ -421,22 +445,32 @@ class Dashboard():
                 L_y = self.data.data['y_L'][index]
                 W_x = self.data.data['x_W'][index]
                 W_y = self.data.data['y_W'][index]
-                K_ex = self._df.loc[mat, (self.g1, 'eKh')]
-                K_ey = self._df.loc[mat, (self.g2, 'eKh')]
+
+                # NaN values have to be avoided
+                if np.isnan(K_x) or np.isnan(K_y):
+                    K_x, K_y = 0, 0
+                    K_ex, K_ey = 0, 0
+                else:
+                    K_ex = self._dfs.loc[mat, (self.g1, 'eKh')]
+                    K_ey = self._dfs.loc[mat, (self.g2, 'eKh')]
+
                 if np.isnan(L_x) or np.isnan(L_y):
                     L_x, L_y = 0, 0
                     L_ex, L_ey = 0, 0
                 else:
-                    L_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.lp)
-                    L_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.lp)
+                    L_ex = get_err(
+                        self._dfs.loc[mat, (self.g1, 'eL')], self.lp)
+                    L_ey = get_err(
+                        self._dfs.loc[mat, (self.g2, 'eL')], self.lp)
+
                 if np.isnan(W_x) or np.isnan(W_y):
                     W_x, W_y = 0, 0
                     W_ex, W_ey = 0, 0
                 else:
-                    W_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.p1) + \
-                        get_err(self._df.loc[mat, (self.g1, 'eL')], self.p2)
-                    W_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.p1) + \
-                        get_err(self._df.loc[mat, (self.g2, 'eL')], self.p2)
+                    W_ex = get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p1) + \
+                        get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p2)
+                    W_ey = get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p1) + \
+                        get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p2)
 
                 mats.extend([mat, mat])
                 K_X.extend([K_x, K_x])
@@ -515,8 +549,10 @@ class Dashboard():
                     L_ex, L_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    L_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.lp)
-                    L_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.lp)
+                    L_ex = get_err(
+                        self._dfs.loc[mat, (self.g1, 'eL')], self.lp)
+                    L_ey = get_err(
+                        self._dfs.loc[mat, (self.g2, 'eL')], self.lp)
 
                 L_X.extend([L_x, L_x])
                 L_Y.extend([L_y, L_y])
@@ -566,10 +602,10 @@ class Dashboard():
                     W_ex, W_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    W_ex = get_err(self._df.loc[mat, (self.g1, 'eL')], self.p1) + \
-                        get_err(self._df.loc[mat, (self.g1, 'eL')], self.p2)
-                    W_ey = get_err(self._df.loc[mat, (self.g2, 'eL')], self.p1) + \
-                        get_err(self._df.loc[mat, (self.g2, 'eL')], self.p2)
+                    W_ex = get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p1) + \
+                        get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p2)
+                    W_ey = get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p1) + \
+                        get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p2)
 
                 W_X.extend([W_x, W_x])
                 W_Y.extend([W_y, W_y])
@@ -654,7 +690,7 @@ class Dashboard():
 
             if which == 'g1':
 
-                for iso in self._df.loc[mat, (self.g1, 'iso')]:
+                for iso in self._dfs.loc[mat, (self.g1, 'iso')]:
 
                     parsed = load_isotherm(iso)
 
@@ -665,7 +701,7 @@ class Dashboard():
 
             elif which == 'g2':
 
-                for iso in self._df.loc[mat, (self.g2, 'iso')]:
+                for iso in self._dfs.loc[mat, (self.g2, 'iso')]:
                     parsed = load_isotherm(iso)
 
                     # update the document from callback
