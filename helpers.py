@@ -27,6 +27,25 @@ def load_isotherm(filename):
     return name, pressure, loading, doi
 
 
+def load_isotherm_internal(filename):
+    """Load a particular isotherm."""
+    path = os.path.join(os.path.dirname(__file__), 'data', 'isotherms-aw',
+                        '{0}.json'.format(filename))
+
+    try:
+        with open(path) as file:
+            iso = json.load(file)
+    except Exception:
+        return None
+
+    name = iso['material_name'] + ' ' + iso['material_batch']
+    pressure = [a['loading'] for a in iso['isotherm_data']]
+    loading = [a['pressure'] for a in iso['isotherm_data']]
+    doi = iso['material_name']
+
+    return name, pressure, loading, doi
+
+
 def load_data():
     """Load explorer data."""
     import json
