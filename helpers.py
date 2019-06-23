@@ -62,3 +62,21 @@ def load_data():
     }
 
     return pd.DataFrame.from_dict(data_new, orient='index')
+
+
+def load_data_internal():
+    """Load explorer data."""
+    import json
+    import pandas as pd
+
+    with open(os.path.join(
+            os.path.dirname(__file__), 'data', 'data-aw.json')) as file:
+        data = json.load(file)
+
+    data_new = {
+        a: {(ok, ik): val for (ok, idct) in b.items()
+            for ik, val in idct.items()}
+        for (a, b) in data.items()
+    }
+
+    return pd.DataFrame.from_dict(data_new, orient='index')
