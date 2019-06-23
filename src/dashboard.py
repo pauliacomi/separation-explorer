@@ -14,8 +14,8 @@ from bokeh.palettes import viridis as gen_palette
 from itertools import cycle
 
 from helpers import j2_env
-from helpers import load_data_internal as load_data
-from helpers import load_isotherm_internal as load_isotherm
+from helpers import load_data as load_data
+from helpers import load_isotherm as load_isotherm
 from functools import partial
 from threading import Thread
 from tornado import gen
