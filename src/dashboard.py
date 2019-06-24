@@ -237,7 +237,10 @@ class Dashboard():
                                 callback=OpenURL(url=url)))
         graph.add_tools(HoverTool(show_arrow=False,
                                   line_policy='nearest',
-                                  tooltips='@labels'))
+                                  tooltips=[
+                                      ('Label', '@labels'),
+                                      ('T (K)', '@temp'),
+                                  ]))
 
         graph.xaxis.axis_label = 'Pressure (bar)'
         graph.yaxis.axis_label = 'Uptake (mmol/g)'
@@ -303,7 +306,7 @@ class Dashboard():
         self.data.patch(self.patch_data_w())
         sel = self.data.selected.indices
         if sel:
-            self.errors.data = self.patch_error_wc(sel)
+            self.errors.patch(self.patch_error_wc(sel))
 
     # #########################################################################
     # Data generator
@@ -635,6 +638,7 @@ class Dashboard():
             'doi': [],
             'x': [],
             'y': [],
+            'temp': [],
             'color': [],
         }
 
@@ -720,6 +724,7 @@ class Dashboard():
             'x': [iso[2]],
             'y': [iso[1]],
             'doi': [iso[3]],
+            'temp': [iso[4]],
             'color': [next(self.c_cyc)],
         })
         if float(iso[2][-1]) > self.p_g1iso.x_range.end:
@@ -734,6 +739,7 @@ class Dashboard():
             'x': [iso[2]],
             'y': [iso[1]],
             'doi': [iso[3]],
+            'temp': [iso[4]],
             'color': [next(self.c_cyc)],
         })
         if float(iso[2][-1]) > self.p_g2iso.x_range.end:
