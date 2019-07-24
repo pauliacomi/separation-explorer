@@ -107,17 +107,11 @@ class Dashboard():
         self.details = DataTable(
             columns=[
                 TableColumn(field="labels", title="Material", width=300),
-                TableColumn(field="x_K", title="HK1", width=10,
+                TableColumn(field="sel", title="K2/K1", width=10,
                             formatter=NumberFormatter(format='‘0.0a’')),
-                TableColumn(field="y_K", title="HK2", width=10,
+                TableColumn(field="psa_L", title="PSA-L", width=10,
                             formatter=NumberFormatter(format='‘0.0a’')),
-                TableColumn(field="x_L", title="L1", width=10,
-                            formatter=NumberFormatter(format='‘0.0a’')),
-                TableColumn(field="y_L", title="L1", width=10,
-                            formatter=NumberFormatter(format='‘0.0a’')),
-                TableColumn(field="x_W", title="WC1", width=10,
-                            formatter=NumberFormatter(format='‘0.0a’')),
-                TableColumn(field="y_W", title="WC2", width=10,
+                TableColumn(field="psa_W", title="PSA-WC", width=10,
                             formatter=NumberFormatter(format='‘0.0a’')),
             ],
             source=self.data,
@@ -171,7 +165,7 @@ class Dashboard():
 
         # Create a colour mapper
         mapper = log_cmap(
-            field_name='n_{0}'.format(ind), palette="Viridis256",
+            field_name='{0}_n'.format(ind), palette="Viridis256",
             low_color='grey', high_color='yellow',
             low=3, high=100)
 
@@ -179,16 +173,16 @@ class Dashboard():
         graph = figure(**fig_dict)
 
         graph.add_tools(HoverTool(
-            names=["data_{0}".format(ind)],
+            names=["{0}_data".format(ind)],
             tooltips=self.t_tooltip.render(p=ind))
         )
 
         # Data
         rend = graph.circle(
-            "x_{0}".format(ind), "y_{0}".format(ind),
+            "{0}_x".format(ind), "{0}_y".format(ind),
             source=self.data, size=10,
             line_color=mapper, color=mapper,
-            name="data_{0}".format(ind)
+            name="{0}_data".format(ind)
         )
 
         # Errors
@@ -344,57 +338,91 @@ class Dashboard():
 
     def gen_data(self):
 
+        K_x = self._dfs[self.g1, 'mKh'].values
+        K_y = self._dfs[self.g2, 'mKh'].values
+        K_nx = self._dfs[self.g1, 'lKh'].values
+        K_ny = self._dfs[self.g2, 'lKh'].values
+        K_n = K_nx + K_ny
+
+        L_x = self._dfs[self.g1, 'mL'].apply(self.get_loading).values
+        L_y = self._dfs[self.g2, 'mL'].apply(self.get_loading).values
+        L_nx = self._dfs[self.g1, 'lL'].apply(self.get_loading).values
+        L_ny = self._dfs[self.g2, 'lL'].apply(self.get_loading).values
+        L_n = L_nx + L_ny
+
+        W_x = self._dfs[self.g1, 'mL'].apply(self.get_wc).values
+        W_y = self._dfs[self.g2, 'mL'].apply(self.get_wc).values
+        W_nx = self._dfs[self.g1, 'lL'].apply(self.get_nwc).values
+        W_ny = self._dfs[self.g2, 'lL'].apply(self.get_nwc).values
+        W_n = W_nx + W_ny
+
+        sel = K_y / K_x
+        psa_L = (L_y / L_x) * sel
+        psa_W = (W_y / W_x) * sel
+
         ret_dict = {
             'labels': self._dfs.index,
 
-            # henry data
-            'x_K': self._dfs[self.g1, 'mKh'].values,
-            'y_K': self._dfs[self.g2, 'mKh'].values,
-            'n_xK': self._dfs[self.g1, 'lKh'].values,
-            'n_yK': self._dfs[self.g2, 'lKh'].values,
-            'n_K': self._dfs[self.g1, 'lKh'].values + self._dfs[self.g2, 'lKh'].values,
+            # parameters
+            'sel': sel,
+            'psa_L': psa_L,
+            'psa_W': psa_W,
 
-            # loading data
-            'x_L': self._dfs[self.g1, 'mL'].apply(self.get_loading).values,
-            'y_L': self._dfs[self.g2, 'mL'].apply(self.get_loading).values,
-            'n_xL': self._dfs[self.g1, 'lL'].apply(self.get_loading).values,
-            'n_yL': self._dfs[self.g2, 'lL'].apply(self.get_loading).values,
-            'n_L': self._dfs[self.g1, 'lL'].apply(self.get_loading).values +
-            self._dfs[self.g2, 'lL'].apply(self.get_loading).values,
+            # Henry data
+            'K_x': K_x, 'K_y': K_y,
+            'K_nx': K_nx, 'K_ny': K_ny, 'K_n': K_n,
+
+            # Loading data
+            'L_x': L_x, 'L_y': L_y,
+            'L_nx': L_nx, 'L_ny': L_ny, 'L_n': L_n,
 
             # Working capacity data
-            'x_W': self._dfs[self.g1, 'mL'].apply(self.get_wc).values,
-            'y_W': self._dfs[self.g2, 'mL'].apply(self.get_wc).values,
-            'n_xW': self._dfs[self.g1, 'lL'].apply(self.get_nwc).values,
-            'n_yW': self._dfs[self.g2, 'lL'].apply(self.get_nwc).values,
-            'n_W': self._dfs[self.g1, 'lL'].apply(self.get_nwc).values +\
-            self._dfs[self.g2, 'lL'].apply(self.get_nwc).values,
+            'W_x': W_x, 'W_y': W_y,
+            'W_nx': W_nx, 'W_ny': W_ny, 'W_n': W_n,
         }
 
         return ret_dict
 
     def patch_data_l(self):
 
+        L_x = self._dfs[self.g1, 'mL'].apply(self.get_loading).values
+        L_y = self._dfs[self.g2, 'mL'].apply(self.get_loading).values
+        L_nx = self._dfs[self.g1, 'lL'].apply(self.get_loading).values
+        L_ny = self._dfs[self.g2, 'lL'].apply(self.get_loading).values
+        L_n = L_nx + L_ny
+
+        psa_L = (L_y / L_x) * self.data.data['sel']
+
         ret_dict = {
-            'x_L': [(slice(None), self._dfs[self.g1, 'mL'].apply(self.get_loading).values)],
-            'y_L': [(slice(None), self._dfs[self.g2, 'mL'].apply(self.get_loading).values)],
-            'n_xL': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_loading).values)],
-            'n_yL': [(slice(None), self._dfs[self.g2, 'lL'].apply(self.get_loading).values)],
-            'n_L': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_loading).values +
-                     self._dfs[self.g2, 'lL'].apply(self.get_loading).values)]
+            # parameters
+            'psa_L': [(slice(None), psa_L)],
+
+            # Loading data
+            'L_x': [(slice(None), L_x)], 'L_y': [(slice(None), L_y)],
+            'L_nx': [(slice(None), L_nx)], 'L_ny': [(slice(None), L_ny)],
+            'L_n': [(slice(None), L_n)]
         }
 
         return ret_dict
 
     def patch_data_w(self):
 
+        W_x = self._dfs[self.g1, 'mL'].apply(self.get_wc).values
+        W_y = self._dfs[self.g2, 'mL'].apply(self.get_wc).values
+        W_nx = self._dfs[self.g1, 'lL'].apply(self.get_nwc).values
+        W_ny = self._dfs[self.g2, 'lL'].apply(self.get_nwc).values
+        W_n = W_nx + W_ny
+
+        psa_W = (W_y / W_x) * self.data.data['sel']
+
         ret_dict = {
-            'x_W': [(slice(None), self._dfs[self.g1, 'mL'].apply(self.get_wc).values)],
-            'y_W': [(slice(None), self._dfs[self.g2, 'mL'].apply(self.get_wc).values)],
-            'n_xW': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_nwc).values)],
-            'n_yW': [(slice(None), self._dfs[self.g2, 'lL'].apply(self.get_nwc).values)],
-            'n_W': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_nwc).values +
-                     self._dfs[self.g2, 'lL'].apply(self.get_nwc).values)]
+            # parameters
+            'psa_W': [(slice(None), psa_W)],
+
+            # Working capacity data
+            'W_x': [(slice(None), W_x)], 'W_y': [(slice(None), W_y)],
+            'W_nx': [(slice(None), W_nx)], 'W_ny': [(slice(None), W_ny)],
+            'W_n': [(slice(None), W_n)]
         }
 
         return ret_dict
@@ -426,12 +454,12 @@ class Dashboard():
             for index in indices:
 
                 mat = self.data.data['labels'][index]
-                K_x = self.data.data['x_K'][index]
-                K_y = self.data.data['y_K'][index]
-                L_x = self.data.data['x_L'][index]
-                L_y = self.data.data['y_L'][index]
-                W_x = self.data.data['x_W'][index]
-                W_y = self.data.data['y_W'][index]
+                K_x = self.data.data['K_x'][index]
+                K_y = self.data.data['K_y'][index]
+                L_x = self.data.data['L_x'][index]
+                L_y = self.data.data['L_y'][index]
+                W_x = self.data.data['W_x'][index]
+                W_y = self.data.data['W_y'][index]
 
                 # NaN values have to be avoided
                 if np.isnan(K_x) or np.isnan(K_y):
@@ -525,8 +553,8 @@ class Dashboard():
 
             for index in indices:
 
-                L_x = self.data.data['x_L'][index]
-                L_y = self.data.data['y_L'][index]
+                L_x = self.data.data['L_x'][index]
+                L_y = self.data.data['L_y'][index]
                 if np.isnan(L_x) or np.isnan(L_y):
                     L_x, L_y = 0, 0
                     L_ex, L_ey = 0, 0
@@ -572,8 +600,8 @@ class Dashboard():
 
             for index in indices:
 
-                W_x = self.data.data['x_W'][index]
-                W_y = self.data.data['y_W'][index]
+                W_x = self.data.data['W_x'][index]
+                W_y = self.data.data['W_y'][index]
                 if np.isnan(W_x) or np.isnan(W_y):
                     W_x, W_y = 0, 0
                     W_ex, W_ey = 0, 0
@@ -676,7 +704,7 @@ class Dashboard():
                 self.doc.add_next_tick_callback(
                     partial(
                         self.iso_update_g1,
-                        iso=['inferred', loading, pressure, '', ''], color='k'))
+                        iso=['median', loading, pressure, '', ''], color='k'))
 
                 for iso in self._dfs.loc[mat, (self.g1, 'iso')]:
 
@@ -695,7 +723,7 @@ class Dashboard():
                 self.doc.add_next_tick_callback(
                     partial(
                         self.iso_update_g2,
-                        iso=['inferred', loading, pressure, '', ''], color='k'))
+                        iso=['median', loading, pressure, '', ''], color='k'))
 
                 for iso in self._dfs.loc[mat, (self.g2, 'iso')]:
                     parsed = load_isotherm(iso)
