@@ -309,30 +309,40 @@ class Dashboard():
             self.errors.patch(self.patch_error_wc(sel))
 
     # #########################################################################
+    # Some useful functions
+
+    def get_loading(self, x):
+        if not x:
+            return np.nan
+        elif len(x) <= self.lp:
+            return np.nan
+        return x[self.lp]
+
+    def get_wc(self, x):
+        if not x:
+            return np.nan
+        elif len(x) <= self.p1 or len(x) <= self.p2:
+            return np.nan
+        return x[self.p2] - x[self.p1]
+
+    def get_nwc(self, x):
+        if not x:
+            return np.nan
+        elif len(x) <= self.p1 or len(x) <= self.p2:
+            return np.nan
+        return x[self.p1] + x[self.p2]
+
+    def get_err(self, x, y):
+        if not x:
+            return np.nan
+        elif len(x) <= y:
+            return np.nan
+        return x[y]
+
+    # #########################################################################
     # Data generator
 
     def gen_data(self):
-
-        def get_loading(x):
-            if not x:
-                return np.nan
-            elif len(x) <= self.lp:
-                return np.nan
-            return x[self.lp]
-
-        def get_wc(x):
-            if not x:
-                return np.nan
-            elif len(x) <= self.p1 or len(x) <= self.p2:
-                return np.nan
-            return x[self.p2] - x[self.p1]
-
-        def get_nwc(x):
-            if not x:
-                return np.nan
-            elif len(x) <= self.p1 or len(x) <= self.p2:
-                return np.nan
-            return x[self.p1] + x[self.p2]
 
         ret_dict = {
             'labels': self._dfs.index,
@@ -345,67 +355,46 @@ class Dashboard():
             'n_K': self._dfs[self.g1, 'lKh'].values + self._dfs[self.g2, 'lKh'].values,
 
             # loading data
-            'x_L': self._dfs[self.g1, 'mL'].apply(get_loading).values,
-            'y_L': self._dfs[self.g2, 'mL'].apply(get_loading).values,
-            'n_xL': self._dfs[self.g1, 'lL'].apply(get_loading).values,
-            'n_yL': self._dfs[self.g2, 'lL'].apply(get_loading).values,
-            'n_L': self._dfs[self.g1, 'lL'].apply(get_loading).values +
-            self._dfs[self.g2, 'lL'].apply(get_loading).values,
+            'x_L': self._dfs[self.g1, 'mL'].apply(self.get_loading).values,
+            'y_L': self._dfs[self.g2, 'mL'].apply(self.get_loading).values,
+            'n_xL': self._dfs[self.g1, 'lL'].apply(self.get_loading).values,
+            'n_yL': self._dfs[self.g2, 'lL'].apply(self.get_loading).values,
+            'n_L': self._dfs[self.g1, 'lL'].apply(self.get_loading).values +
+            self._dfs[self.g2, 'lL'].apply(self.get_loading).values,
 
             # Working capacity data
-            'x_W': self._dfs[self.g1, 'mL'].apply(get_wc).values,
-            'y_W': self._dfs[self.g2, 'mL'].apply(get_wc).values,
-            'n_xW': self._dfs[self.g1, 'lL'].apply(get_nwc).values,
-            'n_yW': self._dfs[self.g2, 'lL'].apply(get_nwc).values,
-            'n_W': self._dfs[self.g1, 'lL'].apply(get_nwc).values +\
-            self._dfs[self.g2, 'lL'].apply(get_nwc).values,
+            'x_W': self._dfs[self.g1, 'mL'].apply(self.get_wc).values,
+            'y_W': self._dfs[self.g2, 'mL'].apply(self.get_wc).values,
+            'n_xW': self._dfs[self.g1, 'lL'].apply(self.get_nwc).values,
+            'n_yW': self._dfs[self.g2, 'lL'].apply(self.get_nwc).values,
+            'n_W': self._dfs[self.g1, 'lL'].apply(self.get_nwc).values +\
+            self._dfs[self.g2, 'lL'].apply(self.get_nwc).values,
         }
 
         return ret_dict
 
     def patch_data_l(self):
 
-        def get_loading(x):
-            if not x:
-                return np.nan
-            elif len(x) <= self.lp:
-                return np.nan
-            return x[self.lp]
-
         ret_dict = {
-            'x_L': [(slice(None), self._dfs[self.g1, 'mL'].apply(get_loading).values)],
-            'y_L': [(slice(None), self._dfs[self.g2, 'mL'].apply(get_loading).values)],
-            'n_xL': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_loading).values)],
-            'n_yL': [(slice(None), self._dfs[self.g2, 'lL'].apply(get_loading).values)],
-            'n_L': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_loading).values +
-                     self._dfs[self.g2, 'lL'].apply(get_loading).values)]
+            'x_L': [(slice(None), self._dfs[self.g1, 'mL'].apply(self.get_loading).values)],
+            'y_L': [(slice(None), self._dfs[self.g2, 'mL'].apply(self.get_loading).values)],
+            'n_xL': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_loading).values)],
+            'n_yL': [(slice(None), self._dfs[self.g2, 'lL'].apply(self.get_loading).values)],
+            'n_L': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_loading).values +
+                     self._dfs[self.g2, 'lL'].apply(self.get_loading).values)]
         }
 
         return ret_dict
 
     def patch_data_w(self):
 
-        def get_wc(x):
-            if not x:
-                return np.nan
-            elif len(x) <= self.p1 or len(x) <= self.p2:
-                return np.nan
-            return x[self.p2] - x[self.p1]
-
-        def get_nwc(x):
-            if not x:
-                return np.nan
-            elif len(x) <= self.p1 or len(x) <= self.p2:
-                return np.nan
-            return x[self.p1] + x[self.p2]
-
         ret_dict = {
-            'x_W': [(slice(None), self._dfs[self.g1, 'mL'].apply(get_wc).values)],
-            'y_W': [(slice(None), self._dfs[self.g2, 'mL'].apply(get_wc).values)],
-            'n_xW': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_nwc).values)],
-            'n_yW': [(slice(None), self._dfs[self.g2, 'lL'].apply(get_nwc).values)],
-            'n_W': [(slice(None), self._dfs[self.g1, 'lL'].apply(get_nwc).values +
-                     self._dfs[self.g2, 'lL'].apply(get_nwc).values)]
+            'x_W': [(slice(None), self._dfs[self.g1, 'mL'].apply(self.get_wc).values)],
+            'y_W': [(slice(None), self._dfs[self.g2, 'mL'].apply(self.get_wc).values)],
+            'n_xW': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_nwc).values)],
+            'n_yW': [(slice(None), self._dfs[self.g2, 'lL'].apply(self.get_nwc).values)],
+            'n_W': [(slice(None), self._dfs[self.g1, 'lL'].apply(self.get_nwc).values +
+                     self._dfs[self.g2, 'lL'].apply(self.get_nwc).values)]
         }
 
         return ret_dict
@@ -427,13 +416,6 @@ class Dashboard():
             }
 
         else:
-
-            def get_err(x, y):
-                if not x:
-                    return np.nan
-                elif len(x) <= y:
-                    return np.nan
-                return x[y]
 
             mats = []
             K_X, K_Y, L_X, L_Y, W_X, W_Y = [], [], [], [], [], []
@@ -463,19 +445,21 @@ class Dashboard():
                     L_x, L_y = 0, 0
                     L_ex, L_ey = 0, 0
                 else:
-                    L_ex = get_err(
+                    L_ex = self.get_err(
                         self._dfs.loc[mat, (self.g1, 'eL')], self.lp)
-                    L_ey = get_err(
+                    L_ey = self.get_err(
                         self._dfs.loc[mat, (self.g2, 'eL')], self.lp)
 
                 if np.isnan(W_x) or np.isnan(W_y):
                     W_x, W_y = 0, 0
                     W_ex, W_ey = 0, 0
                 else:
-                    W_ex = get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p1) + \
-                        get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p2)
-                    W_ey = get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p1) + \
-                        get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p2)
+                    W_ex = self.get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p1) + \
+                        self.get_err(
+                            self._dfs.loc[mat, (self.g1, 'eL')], self.p2)
+                    W_ey = self.get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p1) + \
+                        self.get_err(
+                            self._dfs.loc[mat, (self.g2, 'eL')], self.p2)
 
                 mats.extend([mat, mat])
                 K_X.extend([K_x, K_x])
@@ -535,12 +519,6 @@ class Dashboard():
                 'L_y1': [(slice(None), [])],
             }
         else:
-            def get_err(x, y):
-                if not x:
-                    return np.nan
-                elif len(x) <= y:
-                    return np.nan
-                return x[y]
 
             L_X, L_Y = [], []
             L_X1, L_Y1, L_X2, L_Y2 = [], [], [], []
@@ -554,9 +532,9 @@ class Dashboard():
                     L_ex, L_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    L_ex = get_err(
+                    L_ex = self.get_err(
                         self._dfs.loc[mat, (self.g1, 'eL')], self.lp)
-                    L_ey = get_err(
+                    L_ey = self.get_err(
                         self._dfs.loc[mat, (self.g2, 'eL')], self.lp)
 
                 L_X.extend([L_x, L_x])
@@ -588,12 +566,6 @@ class Dashboard():
                 'W_y1': [(slice(None), [])],
             }
         else:
-            def get_err(x, y):
-                if not x:
-                    return np.nan
-                elif len(x) <= y:
-                    return np.nan
-                return x[y]
 
             W_X, W_Y = [], []
             W_X1, W_Y1, W_X2, W_Y2 = [], [], [], []
@@ -607,10 +579,12 @@ class Dashboard():
                     W_ex, W_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    W_ex = get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p1) + \
-                        get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p2)
-                    W_ey = get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p1) + \
-                        get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p2)
+                    W_ex = self.get_err(self._dfs.loc[mat, (self.g1, 'eL')], self.p1) + \
+                        self.get_err(
+                            self._dfs.loc[mat, (self.g1, 'eL')], self.p2)
+                    W_ey = self.get_err(self._dfs.loc[mat, (self.g2, 'eL')], self.p1) + \
+                        self.get_err(
+                            self._dfs.loc[mat, (self.g2, 'eL')], self.p2)
 
                 W_X.extend([W_x, W_x])
                 W_Y.extend([W_y, W_y])
@@ -696,6 +670,14 @@ class Dashboard():
 
             if which == 'g1':
 
+                loading = self._dfs.loc[mat, (self.g1, 'mL')]
+                pressure = [(1 + p) * 0.5 for p in range(len(loading))]
+
+                self.doc.add_next_tick_callback(
+                    partial(
+                        self.iso_update_g1,
+                        iso=['inferred', loading, pressure, '', ''], color='k'))
+
                 for iso in self._dfs.loc[mat, (self.g1, 'iso')]:
 
                     parsed = load_isotherm(iso)
@@ -707,6 +689,14 @@ class Dashboard():
 
             elif which == 'g2':
 
+                loading = self._dfs.loc[mat, (self.g2, 'mL')]
+                pressure = [(1 + p) * 0.5 for p in range(len(loading))]
+
+                self.doc.add_next_tick_callback(
+                    partial(
+                        self.iso_update_g2,
+                        iso=['inferred', loading, pressure, '', ''], color='k'))
+
                 for iso in self._dfs.loc[mat, (self.g2, 'iso')]:
                     parsed = load_isotherm(iso)
 
@@ -714,18 +704,18 @@ class Dashboard():
                     if parsed:
                         self.doc.add_next_tick_callback(
                             partial(self.iso_update_g2, iso=parsed))
-            else:
-                raise Exception
 
     @gen.coroutine
-    def iso_update_g1(self, iso):
+    def iso_update_g1(self, iso, color=None):
+        if not color:
+            color = next(self.c_cyc)
         self.s_g1iso.stream({
             'labels': [iso[0]],
             'x': [iso[2]],
             'y': [iso[1]],
             'doi': [iso[3]],
             'temp': [iso[4]],
-            'color': [next(self.c_cyc)],
+            'color': [color],
         })
         if float(iso[2][-1]) > self.p_g1iso.x_range.end:
             self.p_g1iso.x_range.end = float(iso[2][-1])
@@ -733,14 +723,16 @@ class Dashboard():
             self.p_g1iso.y_range.end = float(iso[1][-1])
 
     @gen.coroutine
-    def iso_update_g2(self, iso):
+    def iso_update_g2(self, iso, color=None):
+        if not color:
+            color = next(self.c_cyc)
         self.s_g2iso.stream({
             'labels': [iso[0]],
             'x': [iso[2]],
             'y': [iso[1]],
             'doi': [iso[3]],
             'temp': [iso[4]],
-            'color': [next(self.c_cyc)],
+            'color': [color],
         })
         if float(iso[2][-1]) > self.p_g2iso.x_range.end:
             self.p_g2iso.x_range.end = float(iso[2][-1])

@@ -23,7 +23,7 @@ def load_isotherm(filename):
     pressure = [a['loading'] for a in iso['isotherm_data']]
     loading = [a['pressure'] for a in iso['isotherm_data']]
     doi = iso['DOI']
-    temp = iso['t_iso']
+    temp = iso['temperature']
 
     return name, pressure, loading, doi, temp
 
@@ -39,11 +39,11 @@ def load_isotherm_internal(filename):
     except Exception:
         return None
 
-    name = iso['material_name'] + ' ' + iso['material_batch']
+    name = iso['material'] + ' ' + iso['material_batch']
     pressure = [a['loading'] for a in iso['isotherm_data']]
     loading = [a['pressure'] for a in iso['isotherm_data']]
-    doi = iso['material_name']
-    temp = iso['t_iso']
+    doi = iso['material']
+    temp = iso['temperature']
 
     return name, pressure, loading, doi, temp
 
