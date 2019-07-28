@@ -324,7 +324,7 @@ class Dashboard():
             return np.nan
         elif len(x) <= self.p1 or len(x) <= self.p2:
             return np.nan
-        return x[self.p1] + x[self.p2]
+        return max([x[self.p1], x[self.p2]])
 
     def get_err(self, x, y):
         if not x:
