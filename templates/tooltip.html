@@ -1,0 +1,27 @@
+<style>
+    .bk-tooltip>div:not(:first-child) {display:none;}
+</style>
+<div>
+    <div>
+        <span class="label-title">@labels</span>
+    </div>
+
+    <table>
+        <tr>
+            <td class="label-text">Coord (x, y):</td>
+            <td class="label-text label-value">(@{{ p }}_x, @{{ p }}_y)</td>
+        </tr>
+        <tr>
+            <td class="label-text">Total isotherms:</td>
+            <td class="label-value">@{{ p }}_n</td>
+        </tr>
+        <tr>
+            <td class="label-text">Gas 1 isotherms:</td>
+            <td class="label-value">@{{ p }}_nx</td>
+        </tr>
+        <tr>
+            <td class="label-text">Gas 2 isotherms:</td>
+            <td class="label-value">@{{ p }}_ny</td>
+        </tr>
+    </table>
+</div>
