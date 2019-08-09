@@ -30,8 +30,8 @@ Performance of this version is limited to the infrastructure
 and bandwith provided by Heroku.
 
 It is entirely possible (and faster) to run a local version of the explorer
-by first installing all the Python requirements in `requirements.txt`
-and then starting a local Bokeh server with:
+by first cloning this repository, installing all the Python requirements in
+`requirements.txt` and then starting a local Bokeh server with:
 
 ```
 bokeh serve . --show
