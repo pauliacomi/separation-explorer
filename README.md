@@ -20,7 +20,7 @@ ones in the `./data/isotherms/` folder.
 
 ## Dashboard
 
-The separation explorer dashboard is built on top of a Bokeh
+The separation explorer dashboard is built on top of a [Bokeh](https://bokeh.pydata.org/)
 server. The main code is found in `./src` while auxiliary html
 and css templates can be found in the `./templates/` folder.
 
