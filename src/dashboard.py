@@ -1,8 +1,8 @@
 import numpy as np
 
 from bokeh.plotting import figure
-from bokeh.layouts import widgetbox, gridplot, layout, row
-from bokeh.models import Slider, Button, RadioButtonGroup, RangeSlider, Div, Paragraph, Select
+from bokeh.layouts import gridplot, layout
+from bokeh.models import Slider, Button, RadioButtonGroup, RangeSlider, Select
 from bokeh.models import Circle
 from bokeh.models import ColorBar, HoverTool, TapTool, OpenURL, LabelSet
 from bokeh.models import ColumnDataSource
@@ -14,9 +14,9 @@ from bokeh.palettes import viridis as gen_palette
 
 from itertools import cycle
 
-from helpers import j2_env
-from helpers import load_data as load_data
-from helpers import load_isotherm as load_isotherm
+from src.helpers import j2_env
+from src.helpers import load_data as load_data
+from src.helpers import load_isotherm as load_isotherm
 from functools import partial
 from threading import Thread
 from tornado import gen

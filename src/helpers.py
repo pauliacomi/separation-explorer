@@ -1,17 +1,18 @@
-import os
 import json
+
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
 j2_env = Environment(
-    loader=FileSystemLoader(
-        os.path.join(os.path.dirname(__file__), 'templates')))
+    loader=FileSystemLoader(str(Path.cwd() / 'templates')))
+# str() wrapper to path needed because of 3.7 bug
+# see: https://bugs.python.org/issue33617
 
 
 def load_isotherm(filename):
     """Load a particular isotherm."""
-    path = os.path.join(os.path.dirname(__file__), 'data', 'isotherms',
-                        '{0}.json'.format(filename))
+    path = Path.cwd() / 'data' / 'isotherms' / '{0}.json'.format(filename)
 
     try:
         with open(path) as file:
@@ -33,8 +34,7 @@ def load_data():
     import json
     import pandas as pd
 
-    with open(os.path.join(
-            os.path.dirname(__file__), 'data', 'kpi.json')) as file:
+    with open(Path.cwd() / 'data' / 'kpi.json') as file:
         data = json.load(file)
 
     data_new = {
