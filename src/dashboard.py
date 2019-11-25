@@ -1,13 +1,14 @@
 import numpy as np
 
 from bokeh.plotting import figure
-from bokeh.layouts import widgetbox, gridplot, layout
-from bokeh.models import Slider, RangeSlider, Div, Paragraph, Select
+from bokeh.layouts import widgetbox, gridplot, layout, row
+from bokeh.models import Slider, Button, RadioButtonGroup, RangeSlider, Div, Paragraph, Select
 from bokeh.models import Circle
 from bokeh.models import ColorBar, HoverTool, TapTool, OpenURL, LabelSet
 from bokeh.models import ColumnDataSource
 from bokeh.models import DataTable, TableColumn, NumberFormatter
 from bokeh.models import LogTicker
+from bokeh.models.callbacks import CustomJS
 from bokeh.transform import log_cmap
 from bokeh.palettes import viridis as gen_palette
 
@@ -95,7 +96,7 @@ class Dashboard():
         self.top_graph_labels()
 
         # Pressure slider
-        p_slider = Slider(title="Pressure", value=0.5,
+        p_slider = Slider(title="Pressure (bar)", value=0.5,
                           start=0, end=20, step=0.5,
                           callback_policy='throttle',
                           callback_throttle=500,
@@ -103,7 +104,7 @@ class Dashboard():
         p_slider.on_change('value_throttled', self.uptake_callback)
 
         # Working capacity slider
-        wc_slider = RangeSlider(title="Working capacity",
+        wc_slider = RangeSlider(title="Working capacity (bar)",
                                 value=(0.5, 5),
                                 start=0, end=20, step=0.5,
                                 callback_policy='throttle',
@@ -137,16 +138,33 @@ class Dashboard():
         # Isotherm display palette
         self.c_cyc = cycle(gen_palette(20))
 
+        tour_button = Button(
+            label="Show me how this works!", button_type="success")
+        tour_button.js_on_click(CustomJS(code="startIntro()"))
+        data_type = RadioButtonGroup(
+            labels=["All Data", "Experimental", "Simulated"], active=0)
         # Layout
         self.dash_layout = layout([
+            [tour_button, data_type],
             [g1_sel, g2_sel],
             [gridplot([
                 [self.details, self.p_henry],
-                [self.p_loading, self.p_wc]])],
+                [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
             [p_slider, wc_slider],
-            [gridplot(
-                [[self.p_g1iso, self.p_g2iso]])],
+            [self.p_g1iso, self.p_g2iso],
         ], sizing_mode='scale_width')
+
+        # Custom css classes for interactors
+        data_type.css_classes = ['dtypes']
+        self.details.css_classes = ['t-details']
+        self.p_henry.css_classes = ['g-henry']
+        self.p_loading.css_classes = ['g-load']
+        self.p_wc.css_classes = ['g-wcap']
+
+        self.dash_layout.children[1].css_classes = ['g-selectors']
+        self.dash_layout.children[2].css_classes = ['kpi']
+        self.dash_layout.children[3].css_classes = ['p-selectors']
+        self.dash_layout.children[4].css_classes = ['isotherms']
 
     # #########################################################################
     # Graph generators
@@ -218,9 +236,9 @@ class Dashboard():
         """Generate the top graph labels from selected gases."""
         self.p_loading.xaxis.axis_label = '{0} (mmol/g)'.format(self.g1)
         self.p_loading.yaxis.axis_label = '{0} (mmol/g)'.format(self.g2)
-        self.p_henry.xaxis.axis_label = '{0} (dimensionless)'.format(
+        self.p_henry.xaxis.axis_label = '{0} (mmol/bar)'.format(
             self.g1)
-        self.p_henry.yaxis.axis_label = '{0} (dimensionless)'.format(
+        self.p_henry.yaxis.axis_label = '{0} (mmol/bar)'.format(
             self.g2)
         self.p_wc.xaxis.axis_label = '{0} (mmol/g)'.format(self.g1)
         self.p_wc.yaxis.axis_label = '{0} (mmol/g)'.format(self.g2)
