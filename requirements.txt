@@ -3,3 +3,4 @@ bokeh
 jinja2
 numpy
 pandas
+pytables
