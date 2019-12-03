@@ -1,6 +1,6 @@
 {% extends base %}
 
-{% block title %}Separation explorer{% endblock %}
+{% block title %}Adsorbent explorer{% endblock %}
 
 {% block postamble %}
   <style>
@@ -16,14 +16,18 @@
 {% block contents %}
   <div class="content" style="text-align: center;">
 
-      <h1>Material explorer for binary separations</h1>
+      <h1>Adsorbent material explorer</h1>
+      </br>
+
+      <div style="display: hidden;">
+      </div>
 
       <div style="width: 90%; margin: auto;">
         {{ super() }}
       </div>
 
       <p>
-        The datasets above are generated using data from the <a href="https://adsorption.nist.gov/">NIST ISODB</a>.
+        The datasets are generated using isotherms from the <a href="https://adsorption.nist.gov/">NIST ISODB</a>.
         The code powering this dashboard can be found <a href="https://github.com/pauliacomi/separation-explorer">here</a>.
       </p>
   

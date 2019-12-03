@@ -10,6 +10,16 @@ j2_env = Environment(
 # see: https://bugs.python.org/issue33617
 
 
+def load_tooltip():
+    """Load the graph tooltip."""
+    return j2_env.get_template('tooltip.html')
+
+
+def load_spinner():
+    """Load the graph tooltip."""
+    return j2_env.get_template('spinner.html')
+
+
 def load_isotherm(filename):
     """Load a particular isotherm."""
     path = Path.cwd() / 'data' / 'isotherms' / '{0}.json'.format(filename)
@@ -31,16 +41,5 @@ def load_isotherm(filename):
 
 def load_data():
     """Load explorer data."""
-    import json
     import pandas as pd
-
-    with open(Path.cwd() / 'data' / 'kpi.json') as file:
-        data = json.load(file)
-
-    data_new = {
-        a: {(ok, ik): val for (ok, idct) in b.items()
-            for ik, val in idct.items()}
-        for (a, b) in data.items()
-    }
-
-    return pd.DataFrame.from_dict(data_new, orient='index')
+    return pd.read_hdf(Path.cwd() / 'data' / 'kpi.h5', 'table')
