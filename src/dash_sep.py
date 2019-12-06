@@ -34,7 +34,7 @@ class SeparationDash():
 
         # Button to commence tour
         self.tour_button = Button(
-            label="Show me how this works!", button_type="success")
+            label="Show me how this works!", button_type="primary")
         self.tour_button.js_on_click(CustomJS(code="startIntro()"))
 
         # Data type selection
@@ -114,22 +114,22 @@ class SeparationDash():
         self.c_cyc = cycle(gen_palette(20))
 
         # # spinner
-        # self.spinner = Div(text="", width=120, height=120)
+        self.spinner = Div(text="", width=10, height=10)
+        self.switch = False
 
-        # def show_spinner():
-        #     self.spinner.text = load_spinner().render()
+        def show_spinner():
+            if self.switch:
+                self.spinner.text = load_spinner().render()
+            else:
+                self.spinner.text = ""
+            self.switch = not self.switch
 
-        # def hide_spinner():
-        #     self.spinner.text = ""
-        # show_spinner_button = Button(label='Show Spinner')
-        # hide_spinner_button = Button(label='Hide Spinner')
-        # show_spinner_button.on_click(show_spinner)
-        # hide_spinner_button.on_click(hide_spinner)
+        self.update_btn = Button(label='Update', button_type='success')
+        self.update_btn.on_click(show_spinner)
 
         # Layout
         self.layout = layout([
-            # [show_spinner_button, hide_spinner_button],
-            # [self.spinner],
+            # [self.tour_button, self.data_type, self.update_btn, self.spinner],
             [self.tour_button, self.data_type],
             [self.g1_sel, self.g2_sel, self.t_absolute, self.t_tolerance],
             [gridplot([

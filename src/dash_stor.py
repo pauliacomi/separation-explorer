@@ -12,7 +12,7 @@ from bokeh.models.markers import Circle
 from bokeh.models.annotations import ColorBar, LabelSet
 from bokeh.models.tools import HoverTool, TapTool
 from bokeh.models.tickers import LogTicker
-from bokeh.transform import log_cmap
+from bokeh.transform import log_cmap, jitter
 from bokeh.palettes import viridis as gen_palette
 
 from src.helpers import load_tooltip
@@ -144,12 +144,11 @@ class StorageDash():
                         active_scroll="wheel_zoom",
                         plot_width=plot_side_size,
                         plot_height=plot_side_size,
-                        title=title)
-        fig_dict.update(kwargs)
+                        title=title, y_range=['Materials'])
 
         # Create a colour mapper for number of isotherms
         mapper = log_cmap(
-            field_name='{0}_n'.format(ind), palette="Viridis256",
+            field_name='{0}_nx'.format(ind), palette="Viridis256",
             low_color='grey', high_color='yellow',
             low=3, high=100)
 
@@ -164,29 +163,29 @@ class StorageDash():
 
         # Plot the data
         rend = graph.circle(
-            "{0}_x".format(ind), "{0}_y".format(ind),
+            "{0}_x".format(ind), y=jitter('{0}_nx'.format(ind), width=0.6, range=graph.y_range),
             source=data, size=10,
             line_color=mapper, color=mapper,
             name="{0}_data".format(ind)
         )
 
         # Plot the error margins
-        graph.segment(
-            '{0}_x0'.format(ind), '{0}_y0'.format(ind),
-            '{0}_x1'.format(ind), '{0}_y1'.format(ind),
-            source=errors,
-            color="black", line_width=2,
-            line_cap='square', line_dash='dotted')
+        # graph.segment(
+        #     '{0}_x0'.format(ind), '{0}_y0'.format(ind),
+        #     '{0}_x1'.format(ind), '{0}_y1'.format(ind),
+        #     source=errors,
+        #     color="black", line_width=2,
+        #     line_cap='square', line_dash='dotted')
 
         # Plot labels next to selected materials
-        graph.add_layout(LabelSet(
-            x='{0}_x'.format(ind), y='{0}_y'.format(ind),
-            source=errors,
-            text='labels', level='glyph',
-            x_offset=5, y_offset=5,
-            render_mode='canvas',
-            text_font_size='8pt',
-        ))
+        # graph.add_layout(LabelSet(
+        #     x='{0}_x'.format(ind), y='{0}_y'.format(ind),
+        #     source=errors,
+        #     text='labels', level='glyph',
+        #     x_offset=5, y_offset=5,
+        #     render_mode='canvas',
+        #     text_font_size='8pt',
+        # ))
 
         # Add the colorbar to the side
         graph.add_layout(ColorBar(

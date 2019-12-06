@@ -1,36 +1,54 @@
 import numpy as np
 import pandas as pd
+from contextlib import contextmanager
 
 
-def process(series):
+@contextmanager
+def _group_selection_context(groupby):
+    """
+    Set / reset the _group_selection_context.
+    """
+    groupby._set_group_selection()
+    yield groupby
+    groupby._reset_group_selection()
+
+
+def stats(series):
 
     no_nan = series.dropna()
+    size = len(no_nan)
 
-    l = len(no_nan)
-
-    if l == 0:
-        return (0, np.nan, 0)
-
-    elif l == 1:
-        return (1, no_nan, 0)
-
-    elif l == 2:
-        return (l, np.average(no_nan), np.std(no_nan))
-
-    elif 2 < l <= 4:
-        return (l, np.average(no_nan), np.std(no_nan))
-
-    elif 4 < l:
-        Q1 = no_nan.quantile(0.25)
-        Q3 = no_nan.quantile(0.75)
+    if size == 0:
+        med = np.nan
+        std = 0
+    elif size == 1:
+        med = float(no_nan)
+        std = 0
+    elif size == 2:
+        med = np.average(no_nan)
+        std = 0
+    elif 2 < size <= 4:
+        med = np.average(no_nan)
+        std = np.std(no_nan)
+    elif 4 < size:
+        # Computing IQR
+        Q3, Q1 = np.nanpercentile(
+            sorted(no_nan), [75, 25], interpolation='linear')
         IQR = Q3 - Q1
+        med = np.mean((Q1 - 1.5 * IQR < no_nan) | (no_nan > Q3 + 1.5 * IQR))
+        std = np.std(no_nan)
 
-        removed = no_nan[(Q1 - 1.5 * IQR < no_nan) & (no_nan < Q3 + 1.5 * IQR)]
+    return pd.Series((size, med, std), index=(["size", "med", "err"]),
+                     name=series.name)
 
-        return (len(removed), np.mean(removed), np.std(removed))
 
-    else:
-        raise Exception
+def process(data):
+    with _group_selection_context(data):
+        return data.apply(
+            lambda x: pd.concat(
+                [stats(s) for _, s in x.items()],
+                axis=1, sort=False)
+        ).unstack()
 
 
 def select_data(data, i_type, t_abs, t_tol, g1, g2):
@@ -46,8 +64,8 @@ def select_data(data, i_type, t_abs, t_tol, g1, g2):
 
     # generate required data
     return pd.merge(
-        dft[dft['ads'] == g1].drop(
-            ['type', 't', 'ads'], axis=1).reset_index().groupby('mat', sort=False).agg(process),
-        dft[dft['ads'] == g2].drop(
-            ['type', 't', 'ads'], axis=1).reset_index().groupby('mat', sort=False).agg(process),
+        process(dft[dft['ads'] == g1].drop(
+            columns=['type', 't', 'ads']).groupby('mat', sort=False)),
+        process(dft[dft['ads'] == g2].drop(
+            columns=['type', 't', 'ads']).groupby('mat', sort=False)),
         on=('mat'), suffixes=('_x', '_y'))
