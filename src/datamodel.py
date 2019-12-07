@@ -1,6 +1,7 @@
 import numpy as np
 
 from bokeh.models import ColumnDataSource
+from bokeh.models.callbacks import CustomJS
 
 from src.datastore import DATASET, INITIAL, PROBES
 from src.helpers import load_isotherm as load_isotherm
@@ -54,6 +55,7 @@ class DataModel():
 
         # Data selection callback
         self.data.selected.on_change('indices', self.selection_callback)
+        self.data.js_on_change('data', CustomJS(code="toggleLoading()"))
 
     def callback_link_sep(self, s_dash):
         """Link the separation dashboard to the model."""
@@ -69,18 +71,15 @@ class DataModel():
                 self.iso_type = 'exp'
             elif new == 2:
                 self.iso_type = 'sim'
-            self.new_dtype_callback()
 
         self.s_dash.data_type.on_change('active', dtype_callback)
 
         # Adsorbate drop-down selections
         def g1_sel_callback(attr, old, new):
             self.g1 = new
-            self.new_ads_callback()
 
         def g2_sel_callback(attr, old, new):
             self.g2 = new
-            self.new_ads_callback()
 
         self.s_dash.g1_sel.on_change("value", g1_sel_callback)
         self.s_dash.g2_sel.on_change("value", g2_sel_callback)
@@ -88,14 +87,15 @@ class DataModel():
         # Temperature selection callback
         def t_abs_callback(attr, old, new):
             self.t_abs = new
-            self.new_t_callback()
 
         def t_tol_callback(attr, old, new):
             self.t_tol = new
-            self.new_t_callback()
 
         self.s_dash.t_absolute.on_change("value", t_abs_callback)
         self.s_dash.t_tolerance.on_change("value", t_tol_callback)
+
+        # Update callback
+        self.s_dash.process.on_click(self.update_data)
 
         # Pressure slider
         self.s_dash.p_slider.on_change('value_throttled', self.uptake_callback)
@@ -106,52 +106,11 @@ class DataModel():
     # #########################################################################
     # Selection update
 
-    def calculate(self):
-        """Calculate and display for initial values."""
-        # Generate specific dataframe
-        self._dfs = select_data(
-            self._df, self.iso_type,
-            self.t_abs, self.t_tol,
-            self.g1, self.g2
-        )
+    def update_data(self):
+        """What to do when new data is needed."""
 
-        # Gen data
-        self.data.data = self.gen_data()
-
-    def new_dtype_callback(self):
-        """What to do when a new data type is selected."""
-
-        # Calculate
-        self.calculate()
-
-        # Reset any selected materials
-        if self.data.selected.indices:
-            self.data.selected.update(indices=[])
-
-        # Update bottom
-        self.g1_iso_sel.data = self.gen_iso_dict()
-        self.g2_iso_sel.data = self.gen_iso_dict()
-        print(f'finished, now {len(self._dfs)}')
-
-    def new_t_callback(self):
-        """What to do when a new temperature range is selected."""
-
-        # Calculate
-        self.calculate()
-
-        # Reset any selected materials
-        if self.data.selected.indices:
-            self.data.selected.update(indices=[])
-
-        # Update bottom
-        self.g1_iso_sel.data = self.gen_iso_dict()
-        self.g2_iso_sel.data = self.gen_iso_dict()
-
-    def new_ads_callback(self):
-        """What to do when a new ads is selected."""
-
-        # Calculate
-        self.calculate()
+        # Request calculation in separate thread
+        Thread(target=self.calculate_data).start()
 
         # Reset any selected materials
         if self.data.selected.indices:
@@ -160,11 +119,24 @@ class DataModel():
         # Update labels
         self.s_dash.top_graph_labels()
 
-        # Update bottom
+        # Update detail plots
         self.g1_iso_sel.data = self.gen_iso_dict()
         self.g2_iso_sel.data = self.gen_iso_dict()
         self.s_dash.p_g1iso.title.text = 'Isotherms {0}'.format(self.g1)
         self.s_dash.p_g2iso.title.text = 'Isotherms {0}'.format(self.g2)
+
+    def calculate_data(self):
+        self._dfs = select_data(
+            self._df, self.iso_type,
+            self.t_abs, self.t_tol,
+            self.g1, self.g2
+        )
+        self.doc.add_next_tick_callback(self.push_data)
+
+    @gen.coroutine
+    def push_data(self):
+        """Assign data"""
+        self.data.data = self.gen_data()
 
     # #########################################################################
     # Set up pressure slider and callback

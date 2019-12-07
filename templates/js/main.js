@@ -52,8 +52,16 @@ function startIntro() {
             }
         ]
     });
-
     intro.start();
+}
+
+function toggleLoading() {
+    var x = document.getElementById("loading-indicators");
+    if (x.style.display === "none") {
+        x.style.display = "block";
+    } else {
+        x.style.display = "none";
+    }
 }
 
 function startStorIntro() {

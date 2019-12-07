@@ -14,8 +14,11 @@ stor_dash = StorageDash(model)
 
 model.callback_link_sep(sep_dash)
 
-s_tab = Panel(child=sep_dash.layout, title="Separation Explorer")
+# s_tab = Panel(child=sep_dash.layout, title="Separation Explorer")
 # u_tab = Panel(child=stor_dash.layout, title="Storage Explorer")
-tabs = Tabs(tabs=[s_tab])  # , u_tab])
+# tabs = Tabs(tabs=[s_tab])  # , u_tab])
 
-doc.add_root(tabs)
+doc.add_root(sep_dash.dsel_widgets)
+doc.add_root(sep_dash.process)
+doc.add_root(sep_dash.kpi_plots)
+doc.add_root(sep_dash.detail_plots)

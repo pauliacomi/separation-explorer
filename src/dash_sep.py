@@ -32,18 +32,29 @@ class SeparationDash():
         # Save reference to model
         self.model = model
 
+        ################################
+        # Process button
+        ################################
+
         # Button to commence tour
-        self.tour_button = Button(
-            label="Show me how this works!", button_type="primary")
-        self.tour_button.js_on_click(CustomJS(code="startIntro()"))
+        self.process = Button(
+            label="Update", button_type="primary",
+            name='process', sizing_mode='scale_width')
+        self.process.js_on_click(CustomJS(code="toggleLoading()"))
+
+        ################################
+        # Widgets
+        ################################
 
         # Data type selection
         self.data_type = RadioButtonGroup(
-            labels=["All Data", "Experimental", "Simulated"], active=0)
+            labels=["All Data", "Experimental", "Simulated"],
+            active=0, css_classes=['dtypes'])
 
         # Adsorbate drop-down selections
         self.g1_sel = Select(title="Adsorbate 1",
-                             options=self.model.ads_list, value=self.model.g1)
+                             options=self.model.ads_list, value=self.model.g1,
+                             css_classes=['g-selectors'])
         self.g2_sel = Select(title="Adsorbate 2",
                              options=self.model.ads_list, value=self.model.g2)
 
@@ -52,6 +63,16 @@ class SeparationDash():
             value=303, title='Temperature:', css_classes=['t_abs'])
         self.t_tolerance = Spinner(
             value=10, title='Tolerance:', css_classes=['t_tol'])
+
+        # Combined in a layout
+        self.dsel_widgets = layout([
+            [self.data_type],
+            [self.g1_sel, self.g2_sel, self.t_absolute, self.t_tolerance],
+        ], sizing_mode='scale_width', name="widgets")
+
+        ################################
+        # KPI Plots
+        ################################
 
         # Top graph generation
         tooltip = load_tooltip()
@@ -103,8 +124,27 @@ class SeparationDash():
             fit_columns=True,
         )
 
+        # Custom css classes for interactors
+        self.p_henry.css_classes = ['g-henry']
+        self.p_loading.css_classes = ['g-load']
+        self.p_wc.css_classes = ['g-wcap']
+        self.details.css_classes = ['t-details']
+
         # Generate the axis labels
         self.top_graph_labels()
+
+        self.kpi_plots = layout([
+            [gridplot([
+                [self.details, self.p_henry],
+                [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
+            [self.p_slider, self.wc_slider],
+        ], sizing_mode='scale_width', name="kpiplots")
+        self.kpi_plots.children[0].css_classes = ['kpi']
+        self.kpi_plots.children[1].css_classes = ['p-selectors']
+
+        ################################
+        # Isotherm details explorer
+        ################################
 
         # Isotherm display graphs
         self.p_g1iso = self.bottom_graph(self.model.g1_iso_sel, self.model.g1)
@@ -113,43 +153,10 @@ class SeparationDash():
         # Isotherm display palette
         self.c_cyc = cycle(gen_palette(20))
 
-        # # spinner
-        self.spinner = Div(text="", width=10, height=10)
-        self.switch = False
-
-        def show_spinner():
-            if self.switch:
-                self.spinner.text = load_spinner().render()
-            else:
-                self.spinner.text = ""
-            self.switch = not self.switch
-
-        self.update_btn = Button(label='Update', button_type='success')
-        self.update_btn.on_click(show_spinner)
-
-        # Layout
-        self.layout = layout([
-            # [self.tour_button, self.data_type, self.update_btn, self.spinner],
-            [self.tour_button, self.data_type],
-            [self.g1_sel, self.g2_sel, self.t_absolute, self.t_tolerance],
-            [gridplot([
-                [self.details, self.p_henry],
-                [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
-            [self.p_slider, self.wc_slider],
-            [Div(text="<h2>Individual isotherms</h2>")],
+        self.detail_plots = layout([
             [self.p_g1iso, self.p_g2iso],
-        ], sizing_mode='scale_width')
-
-        # Custom css classes for interactors
-        self.details.css_classes = ['t-details']
-        self.p_henry.css_classes = ['g-henry']
-        self.p_loading.css_classes = ['g-load']
-        self.p_wc.css_classes = ['g-wcap']
-
-        self.layout.children[1].css_classes = ['g-selectors']
-        self.layout.children[2].css_classes = ['kpi']
-        self.layout.children[3].css_classes = ['p-selectors']
-        self.layout.children[4].css_classes = ['isotherms']
+        ], sizing_mode='scale_width', name="detailplots")
+        self.detail_plots.children[0].css_classes = ['isotherms']
 
     # #########################################################################
     # Graph generators

@@ -2,34 +2,84 @@
 
 {% block title %}Adsorbent explorer{% endblock %}
 
+<!-- goes in head -->
+{% block preamble %}
+
+<!-- Required meta tags -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+  integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+{% endblock %}
+
+<!-- goes in head -->
 {% block postamble %}
-  <style>
-    {% include 'css/main.css' %}
-    {% include 'css/introjs.min.css' %}
-  </style>
-  <script>
-    {% include 'js/intro.min.js' %}
-    {% include 'js/intro-data.js' %}
-  </script>
+<style>
+  {% include 'css/main.css' %}
+  {% include 'css/introjs.min.css' %}
+</style>
+<script>
+  {% include 'js/intro.min.js' %}
+  {% include 'js/main.js' %}
+</script>
 {% endblock %}
 
 {% block contents %}
-  <div class="content" style="text-align: center;">
 
-      <h1>Adsorbent material explorer</h1>
-      </br>
+<div class="container-fluid">
+    <div class="row">
+      <main class="col">
 
-      <div style="display: hidden;">
-      </div>
+        <h1>Adsorbent material explorer</h1>
+        <hr>
 
-      <div style="width: 90%; margin: auto;">
-        {{ super() }}
-      </div>
+        <div class="row">
+          <div class="col-9">
+            {{ embed(roots.widgets) }}
+          </div>
+          <div class="col-3">
+            <div class="row">
+              <div style="width: 80%;">{{ embed(roots.process) }}</div>
+              <div style="width: 20%;"><button type="button" class="btn btn-outline-danger" onclick="startIntro()">?</button></div>
+            </div>
+            <div id='loading-indicators' class="row" style="display: none;">
+              <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+              <div class="spinner-grow text-success" style="width: 3rem; height: 3rem;" role="status"></div>
+              <div class="spinner-grow text-warning" style="width: 3rem; height: 3rem;" role="status"></div>
+              <div class="spinner-grow text-info" style="width: 3rem; height: 3rem;" role="status"></div>
+            </div>
+          </div>
+        </div>
 
-      <p>
-        The datasets are generated using isotherms from the <a href="https://adsorption.nist.gov/">NIST ISODB</a>.
-        The code powering this dashboard can be found <a href="https://github.com/pauliacomi/separation-explorer">here</a>.
-      </p>
-  
-  </div>
-{% endblock %}
+        <hr>
+
+        <div class="row">
+            {{ embed(roots.kpiplots) }}
+        </div>
+        <hr>
+
+        <div class="row">
+            {{ embed(roots.detailplots) }}
+        </div>
+
+        <p>
+          The datasets are generated using isotherms from the <a href="https://adsorption.nist.gov/">NIST ISODB</a>.
+          The code powering this dashboard can be found <a
+            href="https://github.com/pauliacomi/separation-explorer">here</a>.
+        </p>
+      </main>
+    </div>
+
+  <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"
+    integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+    integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+    crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+    integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
+    crossorigin="anonymous"></script>
+  {% endblock %}
