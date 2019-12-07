@@ -4,7 +4,7 @@ from bokeh.models import ColumnDataSource
 
 from src.datastore import DATASET, INITIAL, PROBES
 from src.helpers import load_isotherm as load_isotherm
-from src.statistics import select_data
+from src.statistics import select_data, get_isohash
 from functools import partial
 from threading import Thread
 from tornado import gen
@@ -28,6 +28,7 @@ class DataModel():
         self._df = DATASET       # Entire dataset
         self._dfs = INITIAL      # Selected material-oriented dataset
         self.ads_list = PROBES   # All probes in the system
+        self.p_range = np.arange(0.5, 20.5, 0.5)
 
         # Adsorbate definitions
         self.g1 = "propane"
@@ -101,7 +102,6 @@ class DataModel():
 
         # Working capacity slider
         self.s_dash.wc_slider.on_change('value_throttled', self.wc_callback)
-
 
     # #########################################################################
     # Selection update
@@ -243,7 +243,6 @@ class DataModel():
             'W_nx': W_nx, 'W_ny': W_ny, 'W_n': W_n,
         }
 
-
     def patch_data_l(self):
         """Patch KPI data when uptake changes."""
 
@@ -287,7 +286,6 @@ class DataModel():
             'W_nx': [(slice(None), W_nx)], 'W_ny': [(slice(None), W_ny)],
             'W_n': [(slice(None), W_n)]
         }
-
 
     # #########################################################################
     # Error generator
@@ -336,17 +334,19 @@ class DataModel():
                     L_x, L_y = 0, 0
                     L_ex, L_ey = 0, 0
                 else:
-                    L_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.lp), 'err')]
-                    L_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.lp), 'err')]
+                    L_ex = self._dfs.loc[mat,
+                                         ('{:.1f}_x'.format(self.lp), 'err')]
+                    L_ey = self._dfs.loc[mat,
+                                         ('{:.1f}_y'.format(self.lp), 'err')]
 
                 if np.isnan(W_x) or np.isnan(W_y):
                     W_x, W_y = 0, 0
                     W_ex, W_ey = 0, 0
                 else:
                     W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] + \
-                            self._dfs.loc[mat, ('{:.1f}_x'.format(self.p2), 'err')]
+                        self._dfs.loc[mat, ('{:.1f}_x'.format(self.p2), 'err')]
                     W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] + \
-                            self._dfs.loc[mat, ('{:.1f}_y'.format(self.p2), 'err')]
+                        self._dfs.loc[mat, ('{:.1f}_y'.format(self.p2), 'err')]
 
                 mats.extend([mat, mat])
                 K_X.extend([K_x, K_x])
@@ -378,7 +378,7 @@ class DataModel():
                 'L_x': L_X, 'L_y': L_Y,
                 'W_x': W_X, 'W_y': W_Y,
                 # henry data
-                'K_x0': K_X1, 'K_y0': K_Y1, 'K_x1': K_X2, 'K_y1': K_Y2, 
+                'K_x0': K_X1, 'K_y0': K_Y1, 'K_x1': K_X2, 'K_y1': K_Y2,
                 # loading data
                 'L_x0': L_X1, 'L_y0': L_Y1, 'L_x1': L_X2, 'L_y1': L_Y2,
                 # working capacity data
@@ -410,8 +410,10 @@ class DataModel():
                     L_ex, L_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    L_ex = self._dfs.loc[mat, '{:.1f}_x'.format(self.lp)][2]
-                    L_ey = self._dfs.loc[mat, '{:.1f}_y'.format(self.lp)][2]
+                    L_ex = self._dfs.loc[mat,
+                                         ('{:.1f}_x'.format(self.lp), 'err')]
+                    L_ey = self._dfs.loc[mat,
+                                         ('{:.1f}_y'.format(self.lp), 'err')]
 
                 L_X.extend([L_x, L_x])
                 L_Y.extend([L_y, L_y])
@@ -455,10 +457,10 @@ class DataModel():
                     W_ex, W_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    W_ex = self._dfs.loc[mat, '{:.1f}_x'.format(self.p1)][2] + \
-                            self._dfs.loc[mat, '{:.1f}_x'.format(self.p2)][2]
-                    W_ey = self._dfs.loc[mat, '{:.1f}_y'.format(self.p1)][2] + \
-                            self._dfs.loc[mat, '{:.1f}_y'.format(self.p2)][2]
+                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] + \
+                        self._dfs.loc[mat, ('{:.1f}_x'.format(self.p2), 'err')]
+                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] + \
+                        self._dfs.loc[mat, ('{:.1f}_y'.format(self.p2), 'err')]
 
                 W_X.extend([W_x, W_x])
                 W_Y.extend([W_y, W_y])
@@ -532,58 +534,62 @@ class DataModel():
         # If we have only one point then we display isotherms
         if len(new) == 1:
             # Generate bottom graphs
-            Thread(target=self.populate_isos, args=[new[0], 'g1']).start()
-            Thread(target=self.populate_isos, args=[new[0], 'g2']).start()
+            self.sel_mat = self.data.data['labels'][new[0]]
+            self.g1_hashes = get_isohash(
+                self._df, self.iso_type, self.t_abs, self.t_tol, self.g1, self.sel_mat)
+            self.g2_hashes = get_isohash(
+                self._df, self.iso_type, self.t_abs, self.t_tol, self.g2, self.sel_mat)
+            Thread(target=self.populate_isos, args=['g1']).start()
+            Thread(target=self.populate_isos, args=['g2']).start()
 
     # #########################################################################
     # Isotherm interactions
 
-    def populate_isos(self, index, ads):
+    def populate_isos(self, ads):
         """Threaded code to add isotherms to bottom graphs."""
 
-        mat = self.data.data['labels'][index]
-
         if ads == 'g1':
-
-            loading = self._dfs.loc[mat, (self.g1, 'mL')]
-            pressure = [p * 0.5 for p in range(len(loading) + 1)]
-
+            # "average" isotherm
+            loading = self._dfs.loc[self.sel_mat,
+                                    (slice(None), 'med')].values[1:41]
             self.doc.add_next_tick_callback(
                 partial(
                     self.iso_update_g1,
-                    iso = ['median', loading, pressure, '', ''], color = 'k'))
+                    iso=('median', loading, self.p_range, '', ''),
+                    color='k', resize=False))
 
-            for iso in self._dfs.loc[mat, (self.g1, 'iso')]:
-
-                parsed=load_isotherm(iso)
-
-                # update the document from callback
+            # rest of the isotherms
+            for iso in get_isohash(
+                    self._df, self.iso_type, self.t_abs, self.t_tol,
+                    self.g1, self.sel_mat):
+                parsed = load_isotherm(iso)
                 if parsed:
                     self.doc.add_next_tick_callback(
-                        partial(self.iso_update_g1, iso = parsed))
+                        partial(self.iso_update_g1, iso=parsed))
 
         elif ads == 'g2':
-
-            loading=self._dfs.loc[mat, (self.g2, 'mL')]
-            pressure=[p * 0.5 for p in range(len(loading) + 1)]
-
+            # "average" isotherm
+            loading = self._dfs.loc[self.sel_mat,
+                                    (slice(None), 'med')].values[42:]
             self.doc.add_next_tick_callback(
                 partial(
                     self.iso_update_g2,
-                    iso = ['median', loading, pressure, '', ''], color = 'k'))
+                    iso=('median', loading, self.p_range, '', ''),
+                    color='k', resize=False))
 
-            for iso in self._dfs.loc[mat, (self.g2, 'iso')]:
-                parsed=load_isotherm(iso)
-
-                # update the document from callback
+            # rest of the isotherms
+            for iso in get_isohash(
+                    self._df, self.iso_type, self.t_abs, self.t_tol,
+                    self.g2, self.sel_mat):
+                parsed = load_isotherm(iso)
                 if parsed:
                     self.doc.add_next_tick_callback(
-                        partial(self.iso_update_g2, iso = parsed))
+                        partial(self.iso_update_g2, iso=parsed))
 
     @gen.coroutine
-    def iso_update_g1(self, iso, color=None):
+    def iso_update_g1(self, iso, color=None, resize=True):
         if not color:
-            color=next(self.c_cyc)
+            color = next(self.s_dash.c_cyc)
         self.g1_iso_sel.stream({
             'labels': [iso[0]],
             'x': [iso[2]],
@@ -592,15 +598,16 @@ class DataModel():
             'temp': [iso[4]],
             'color': [color],
         })
-        if float(iso[2][-1]) > self.s_dash.p_g1iso.x_range.end:
-            self.s_dash.p_g1iso.x_range.end = float(iso[2][-1])
-        if float(iso[1][-1]) > self.s_dash.p_g1iso.y_range.end:
-            self.s_dash.p_g1iso.y_range.end = float(iso[1][-1])
+        if resize:
+            if float(iso[2][-1]) > self.s_dash.p_g1iso.x_range.end:
+                self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso[2][-1])
+            if float(iso[1][-1]) > self.s_dash.p_g1iso.y_range.end:
+                self.s_dash.p_g1iso.y_range.end = 1.1 * float(iso[1][-1])
 
     @gen.coroutine
-    def iso_update_g2(self, iso, color=None):
+    def iso_update_g2(self, iso, color=None, resize=True):
         if not color:
-            color = next(self.c_cyc)
+            color = next(self.s_dash.c_cyc)
         self.g2_iso_sel.stream({
             'labels': [iso[0]],
             'x': [iso[2]],
@@ -609,7 +616,8 @@ class DataModel():
             'temp': [iso[4]],
             'color': [color],
         })
-        if float(iso[2][-1]) > self.s_dash.p_g2iso.x_range.end:
-            self.s_dash.p_g2iso.x_range.end = float(iso[2][-1])
-        if float(iso[1][-1]) > self.s_dash.p_g2iso.y_range.end:
-            self.s_dash.p_g2iso.y_range.end = float(iso[1][-1])
+        if resize:
+            if float(iso[2][-1]) > self.s_dash.p_g2iso.x_range.end:
+                self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso[2][-1])
+            if float(iso[1][-1]) > self.s_dash.p_g2iso.y_range.end:
+                self.s_dash.p_g2iso.y_range.end = 1.1 * float(iso[1][-1])

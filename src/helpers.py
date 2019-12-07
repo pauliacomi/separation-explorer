@@ -9,6 +9,8 @@ j2_env = Environment(
 # str() wrapper to path needed because of 3.7 bug
 # see: https://bugs.python.org/issue33617
 
+isodb_base = "https://adsorption.nist.gov/isodb/api/"
+
 
 def load_tooltip():
     """Load the graph tooltip."""
@@ -22,21 +24,32 @@ def load_spinner():
 
 def load_isotherm(filename):
     """Load a particular isotherm."""
-    path = Path.cwd() / 'data' / 'isotherms' / '{0}.json'.format(filename)
+    import requests
+    # path = Path.cwd() / 'data' / 'isotherms' / '{0}.json'.format(filename)
+
+    # try:
+    #     with open(path) as file:
+    #         iso = json.load(file)
+    # except Exception:
+    #     return None
+
+    isodb_session = requests.Session()
 
     try:
-        with open(path) as file:
-            iso = json.load(file)
-    except Exception:
-        return None
+        iso = isodb_session.get(
+            isodb_base + "isotherm/" + filename + '.json', timeout=5).json()
+    except Exception as e:
+        print(e)
 
     name = iso['filename']
-    pressure = [a['loading'] for a in iso['isotherm_data']]
-    loading = [a['pressure'] for a in iso['isotherm_data']]
+    pressure = [a['pressure'] for a in iso['isotherm_data']]
+    # loading = [a['loading'] for a in iso['isotherm_data']]
+    loading = [a['species_data'][0]['adsorption']
+               for a in iso['isotherm_data']]
     doi = iso['DOI']
     temp = iso['temperature']
 
-    return name, pressure, loading, doi, temp
+    return name, loading, pressure, doi, temp
 
 
 def load_data():

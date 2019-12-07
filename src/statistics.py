@@ -19,26 +19,21 @@ def stats(series):
     size = len(no_nan)
 
     if size == 0:
-        med = np.nan
-        std = 0
+        med, std = np.nan, 0
     elif size == 1:
-        med = float(no_nan)
-        std = 0
-    elif size == 2:
-        med = np.average(no_nan)
-        std = 0
-    elif 2 < size <= 4:
-        med = np.average(no_nan)
-        std = np.std(no_nan)
+        med, std = float(no_nan), 0
+    elif 1 < size <= 4:
+        med, std = np.median(no_nan), np.std(no_nan)
     elif 4 < size:
-        # Computing IQR
+        # Compute IQR
         Q3, Q1 = np.nanpercentile(
             sorted(no_nan), [75, 25], interpolation='linear')
         IQR = Q3 - Q1
-        med = np.mean((Q1 - 1.5 * IQR < no_nan) | (no_nan > Q3 + 1.5 * IQR))
-        std = np.std(no_nan)
+        o_rem = no_nan[(Q1 - 1.5 * IQR < no_nan) | (no_nan > Q3 + 1.5 * IQR)]
+        med, std = np.median(o_rem), np.std(o_rem)
 
-    return pd.Series((size, med, std), index=(["size", "med", "err"]),
+    return pd.Series((size, med, std),
+                     index=(["size", "med", "err"]),
                      name=series.name)
 
 
@@ -69,3 +64,17 @@ def select_data(data, i_type, t_abs, t_tol, g1, g2):
         process(dft[dft['ads'] == g2].drop(
             columns=['type', 't', 'ads']).groupby('mat', sort=False)),
         on=('mat'), suffixes=('_x', '_y'))
+
+
+def get_isohash(data, i_type, t_abs, t_tol, ads, mat):
+
+    if i_type:
+        dft = data[data['type'] == i_type]
+    else:
+        dft = data
+
+    return dft[
+        (dft['t'].between(t_abs - t_tol, t_abs + t_tol)) &
+        (dft['ads'] == ads) &
+        (dft['mat'] == mat)
+    ].index

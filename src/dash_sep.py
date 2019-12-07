@@ -136,6 +136,7 @@ class SeparationDash():
                 [self.details, self.p_henry],
                 [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
             [self.p_slider, self.wc_slider],
+            [Div(text="<h2>Individual isotherms</h2>")],
             [self.p_g1iso, self.p_g2iso],
         ], sizing_mode='scale_width')
 
