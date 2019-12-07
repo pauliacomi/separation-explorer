@@ -562,14 +562,8 @@ class DataModel():
     def iso_update_g1(self, iso, color=None, resize=True):
         if not color:
             color = next(self.s_dash.c_cyc)
-        self.g1_iso_sel.stream({
-            'labels': [iso[0]],
-            'x': [iso[2]],
-            'y': [iso[1]],
-            'doi': [iso[3]],
-            'temp': [iso[4]],
-            'color': [color],
-        })
+        iso['color'] = color
+        self.g1_iso_sel.stream(iso)
         if resize:
             if float(iso[2][-1]) > self.s_dash.p_g1iso.x_range.end:
                 self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso[2][-1])
@@ -580,14 +574,7 @@ class DataModel():
     def iso_update_g2(self, iso, color=None, resize=True):
         if not color:
             color = next(self.s_dash.c_cyc)
-        self.g2_iso_sel.stream({
-            'labels': [iso[0]],
-            'x': [iso[2]],
-            'y': [iso[1]],
-            'doi': [iso[3]],
-            'temp': [iso[4]],
-            'color': [color],
-        })
+        self.g2_iso_sel.stream(iso)
         if resize:
             if float(iso[2][-1]) > self.s_dash.p_g2iso.x_range.end:
                 self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso[2][-1])

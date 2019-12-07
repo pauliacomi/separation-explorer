@@ -9,7 +9,7 @@ from bokeh.models.widgets import (
 from bokeh.models.widgets.tables import DataTable, TableColumn, NumberFormatter
 from bokeh.models.callbacks import CustomJS, OpenURL
 from bokeh.models.markers import Circle
-from bokeh.models.annotations import ColorBar, LabelSet
+from bokeh.models.annotations import ColorBar, LabelSet, Slope
 from bokeh.models.tools import HoverTool, TapTool
 from bokeh.models.tickers import LogTicker
 from bokeh.transform import log_cmap
@@ -108,7 +108,7 @@ class SeparationDash():
                                      )
 
         # Material datatable
-        self.details = DataTable(
+        self.mat_list = DataTable(
             columns=[
                 TableColumn(field="labels", title="Material", width=300),
                 TableColumn(field="sel", title="KH2/KH1", width=25,
@@ -128,14 +128,14 @@ class SeparationDash():
         self.p_henry.css_classes = ['g-henry']
         self.p_loading.css_classes = ['g-load']
         self.p_wc.css_classes = ['g-wcap']
-        self.details.css_classes = ['t-details']
+        self.mat_list.css_classes = ['t-details']
 
         # Generate the axis labels
         self.top_graph_labels()
 
         self.kpi_plots = layout([
             [gridplot([
-                [self.details, self.p_henry],
+                [self.mat_list, self.p_henry],
                 [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
             [self.p_slider, self.wc_slider],
         ], sizing_mode='scale_width', name="kpiplots")
@@ -153,7 +153,10 @@ class SeparationDash():
         # Isotherm display palette
         self.c_cyc = cycle(gen_palette(20))
 
+        # self.details = Div()
+
         self.detail_plots = layout([
+            [self.p_g1iso, self.p_g2iso],
             [self.p_g1iso, self.p_g2iso],
         ], sizing_mode='scale_width', name="detailplots")
         self.detail_plots.children[0].css_classes = ['isotherms']
@@ -195,6 +198,12 @@ class SeparationDash():
             line_color=mapper, color=mapper,
             name="{0}_data".format(ind)
         )
+
+        # Plot guide line
+        graph.add_layout(Slope(
+            gradient=1, y_intercept=0,
+            line_color='black', line_dash='dashed',
+            line_width=2))
 
         # Plot the error margins
         graph.segment(

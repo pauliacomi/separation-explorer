@@ -24,7 +24,6 @@ def load_spinner():
 
 def load_isotherm(filename):
     """Load a particular isotherm."""
-    import requests
     # path = Path.cwd() / 'data' / 'isotherms' / '{0}.json'.format(filename)
 
     # try:
@@ -33,6 +32,7 @@ def load_isotherm(filename):
     # except Exception:
     #     return None
 
+    import requests
     isodb_session = requests.Session()
 
     try:
@@ -41,15 +41,14 @@ def load_isotherm(filename):
     except Exception as e:
         print(e)
 
-    name = iso['filename']
-    pressure = [a['pressure'] for a in iso['isotherm_data']]
-    # loading = [a['loading'] for a in iso['isotherm_data']]
-    loading = [a['species_data'][0]['adsorption']
-               for a in iso['isotherm_data']]
-    doi = iso['DOI']
-    temp = iso['temperature']
-
-    return name, loading, pressure, doi, temp
+    return {
+        'labels': iso['filename'],
+        'x': [a['pressure'] for a in iso['isotherm_data']],
+        'y': [a['species_data'][0]['adsorption']
+              for a in iso['isotherm_data']],
+        'doi': iso['DOI'],
+        'temp': iso['temperature'],
+    }
 
 
 def load_data():
