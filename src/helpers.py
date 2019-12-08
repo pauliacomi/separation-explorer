@@ -17,9 +17,16 @@ def load_tooltip():
     return j2_env.get_template('tooltip.html')
 
 
-def load_spinner():
-    """Load the graph tooltip."""
-    return j2_env.get_template('spinner.html')
+def load_details():
+    """Load the detail snippet."""
+    return j2_env.get_template('iso-details.html')
+
+
+def load_details_js():
+    """Load the detail snippet."""
+    path = Path.cwd() / 'templates' / 'js' / 'populate-details.js'
+    with open(path, 'r') as file:
+        return file.read()
 
 
 def load_isotherm(filename):
@@ -42,12 +49,12 @@ def load_isotherm(filename):
         print(e)
 
     return {
-        'labels': iso['filename'],
-        'x': [a['pressure'] for a in iso['isotherm_data']],
-        'y': [a['species_data'][0]['adsorption']
-              for a in iso['isotherm_data']],
-        'doi': iso['DOI'],
-        'temp': iso['temperature'],
+        'labels': [iso['filename']],
+        'x': [[a['pressure'] for a in iso['isotherm_data']]],
+        'y': [[a['species_data'][0]['adsorption']
+               for a in iso['isotherm_data']]],
+        'doi': [iso['DOI']],
+        'temp': [iso['temperature']],
     }
 
 

@@ -15,7 +15,7 @@ from bokeh.models.tickers import LogTicker
 from bokeh.transform import log_cmap
 from bokeh.palettes import viridis as gen_palette
 
-from src.helpers import load_tooltip, load_spinner
+from src.helpers import load_tooltip, load_details, load_details_js
 
 
 class SeparationDash():
@@ -153,10 +153,7 @@ class SeparationDash():
         # Isotherm display palette
         self.c_cyc = cycle(gen_palette(20))
 
-        # self.details = Div()
-
         self.detail_plots = layout([
-            [self.p_g1iso, self.p_g2iso],
             [self.p_g1iso, self.p_g2iso],
         ], sizing_mode='scale_width', name="detailplots")
         self.detail_plots.children[0].css_classes = ['isotherms']
@@ -245,7 +242,7 @@ class SeparationDash():
     def bottom_graph(self, source, ads):
         """Generate the bottom graphs (isotherm display)."""
 
-        graph = figure(tools="pan,wheel_zoom,tap,reset",
+        graph = figure(tools="pan,wheel_zoom,reset",
                        active_scroll="wheel_zoom",
                        plot_width=400, plot_height=250,
                        x_range=(-0.1, 1), y_range=(-0.1, 1),
@@ -256,16 +253,22 @@ class SeparationDash():
                                 hover_line_color="black",
                                 line_color='color')
 
-        # Make clicking a graph oben the NIST database
-        url = "https://adsorption.nist.gov/isodb/index.php?DOI=@doi#biblio"
-        graph.add_tools(TapTool(renderers=[rend],
-                                callback=OpenURL(url=url)))
+        # Make clicking a graph open the NIST database
+
         graph.add_tools(HoverTool(show_arrow=False,
                                   line_policy='nearest',
-                                  tooltips=[
-                                      ('Label', '@labels'),
-                                      ('T (K)', '@temp'),
-                                  ]))
+                                  tooltips="""Click for details"""))
+
+        graph.add_tools(TapTool(renderers=[rend],
+                                callback=CustomJS(
+                                    args={
+                                        'tp': load_details().render(),
+                                    },
+                                    code=load_details_js())))
+
+        source.selected.js_on_change(
+            'indices', CustomJS(
+                code='if (cb_obj.indices.length == 0) document.getElementById("iso-details").style.display = \"none\"'))
 
         graph.xaxis.axis_label = 'Pressure (bar)'
         graph.yaxis.axis_label = 'Uptake (mmol/g)'

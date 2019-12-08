@@ -527,7 +527,8 @@ class DataModel():
             self.doc.add_next_tick_callback(
                 partial(
                     self.iso_update_g1,
-                    iso=('median', loading, self.p_range, '', ''),
+                    iso={'labels': ['median'], 'x': [self.p_range], 'y': [loading],
+                         'temp': [self.t_abs], 'doi': ['']},
                     color='k', resize=False))
 
             # rest of the isotherms
@@ -546,7 +547,8 @@ class DataModel():
             self.doc.add_next_tick_callback(
                 partial(
                     self.iso_update_g2,
-                    iso=('median', loading, self.p_range, '', ''),
+                    iso={'labels': ['median'], 'x': [self.p_range], 'y': [loading],
+                         'temp': [self.t_abs], 'doi': ['']},
                     color='k', resize=False))
 
             # rest of the isotherms
@@ -562,21 +564,22 @@ class DataModel():
     def iso_update_g1(self, iso, color=None, resize=True):
         if not color:
             color = next(self.s_dash.c_cyc)
-        iso['color'] = color
+        iso['color'] = [color]
         self.g1_iso_sel.stream(iso)
         if resize:
-            if float(iso[2][-1]) > self.s_dash.p_g1iso.x_range.end:
-                self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso[2][-1])
-            if float(iso[1][-1]) > self.s_dash.p_g1iso.y_range.end:
-                self.s_dash.p_g1iso.y_range.end = 1.1 * float(iso[1][-1])
+            if float(iso['x'][0][-1]) > self.s_dash.p_g1iso.x_range.end:
+                self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso['x'][0][-1])
+            if float(iso['y'][0][-1]) > self.s_dash.p_g1iso.y_range.end:
+                self.s_dash.p_g1iso.y_range.end = 1.1 * float(iso['y'][0][-1])
 
     @gen.coroutine
     def iso_update_g2(self, iso, color=None, resize=True):
         if not color:
             color = next(self.s_dash.c_cyc)
+        iso['color'] = [color]
         self.g2_iso_sel.stream(iso)
         if resize:
-            if float(iso[2][-1]) > self.s_dash.p_g2iso.x_range.end:
-                self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso[2][-1])
-            if float(iso[1][-1]) > self.s_dash.p_g2iso.y_range.end:
-                self.s_dash.p_g2iso.y_range.end = 1.1 * float(iso[1][-1])
+            if float(iso['x'][0][-1]) > self.s_dash.p_g2iso.x_range.end:
+                self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso['x'][0][-1])
+            if float(iso['y'][0][-1]) > self.s_dash.p_g2iso.y_range.end:
+                self.s_dash.p_g2iso.y_range.end = 1.1 * float(iso['y'][0][-1])
