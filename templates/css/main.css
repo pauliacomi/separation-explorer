@@ -53,6 +53,10 @@ a:hover, a:focus, a:active {
   color: rgb(141, 37, 12);
 }
 
+.details-value {
+  color: rgb(141, 37, 12);
+}
+
 table {
   border: 2px solid #000000;
   text-align: left;

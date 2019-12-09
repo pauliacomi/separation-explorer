@@ -37,7 +37,7 @@ def stats(series):
                      name=series.name)
 
 
-def process(data):
+def calc_kpi(data):
     with _group_selection_context(data):
         return data.apply(
             lambda x: pd.concat(
@@ -48,20 +48,23 @@ def process(data):
 
 def select_data(data, i_type, t_abs, t_tol, g1, g2):
     """Generate two-ads dataframe when selected."""
-    # Select on data type
     if i_type:
-        dft = data[data['type'] == i_type]
+        dft = data[
+            (data['type'] == i_type) &
+            (data['t'].between(t_abs - t_tol, t_abs + t_tol))
+        ]
     else:
-        dft = data
+        dft = data[data['t'].between(t_abs - t_tol, t_abs + t_tol)]
 
-    # select on temperature
-    dft = dft[dft['t'].between(t_abs - t_tol, t_abs + t_tol)]
+    g1_filt = dft[dft['ads'] == g1]
+    g2_filt = dft[dft['ads'] == g2]
+    common = list(set(g1_filt['mat'].unique()).intersection(
+        g2_filt['mat'].unique()))
 
-    # generate required data
     return pd.merge(
-        process(dft[dft['ads'] == g1].drop(
+        calc_kpi(g1_filt[g1_filt['mat'].isin(common)].drop(
             columns=['type', 't', 'ads']).groupby('mat', sort=False)),
-        process(dft[dft['ads'] == g2].drop(
+        calc_kpi(g2_filt[g2_filt['mat'].isin(common)].drop(
             columns=['type', 't', 'ads']).groupby('mat', sort=False)),
         on=('mat'), suffixes=('_x', '_y'))
 

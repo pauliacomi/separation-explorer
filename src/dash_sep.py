@@ -7,7 +7,7 @@ from bokeh.models.widgets import (
     Slider, RangeSlider, Select, Div
 )
 from bokeh.models.widgets.tables import DataTable, TableColumn, NumberFormatter
-from bokeh.models.callbacks import CustomJS, OpenURL
+from bokeh.models.callbacks import CustomJS
 from bokeh.models.markers import Circle
 from bokeh.models.annotations import ColorBar, LabelSet, Slope
 from bokeh.models.tools import HoverTool, TapTool

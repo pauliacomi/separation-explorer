@@ -66,11 +66,14 @@
 
         <div class="row">
             {{ embed(roots.detailplots) }}
-            <div id="iso-details" style="position: absolute; display: none"></div>
         </div>
-
+        <div class="row text-center">
+          <div class="col">
+            <div class="alert alert-info" id="iso-details" style="display: none"></div>
+          </div>
+        </div>
         <hr>
-        <p>
+        <p class="text-center">
           The datasets are generated using isotherms from the <a href="https://adsorption.nist.gov/">NIST ISODB</a>.
           The code powering this dashboard can be found <a
             href="https://github.com/pauliacomi/separation-explorer">here</a>.

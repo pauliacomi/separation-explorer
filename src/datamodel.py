@@ -26,9 +26,11 @@ class DataModel():
         self.doc = doc
 
         # Dataset
-        self._df = DATASET       # Entire dataset
-        self._dfs = INITIAL      # Selected material-oriented dataset
-        self.ads_list = PROBES   # All probes in the system
+        self._df = DATASET                          # Entire dataset
+        self.g1_group = None
+        self.g2_group = None
+        self._dfs = INITIAL                         # Pre-processed KPI dataset
+        self.ads_list = PROBES                      # All probes in the dashboard
         self.p_range = np.arange(0.5, 20.5, 0.5)
 
         # Adsorbate definitions
@@ -172,24 +174,24 @@ class DataModel():
         K_y = self._dfs[('kH_y', 'med')].values
         K_n = K_nx + K_ny
 
-        L_nx = self._dfs[('{0:.1f}_x'.format(self.lp), 'size')].values
-        L_x = self._dfs[('{0:.1f}_x'.format(self.lp), 'med')].values
-        L_ny = self._dfs[('{0:.1f}_y'.format(self.lp), 'size')].values
-        L_y = self._dfs[('{0:.1f}_y'.format(self.lp), 'med')].values
+        L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
+        L_x = self._dfs[(f'{self.lp:.1f}_x', 'med')].values
+        L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
+        L_y = self._dfs[(f'{self.lp:.1f}_y', 'med')].values
         L_n = L_nx + L_ny
 
         W_nx = np.maximum(
-            self._dfs[('{0:.1f}_x'.format(self.p1), 'size')].values,
-            self._dfs[('{0:.1f}_x'.format(self.p2), 'size')].values
+            self._dfs[(f'{self.p1:.1f}_x', 'size')].values,
+            self._dfs[(f'{self.p2:.1f}_x', 'size')].values
         )
-        W_x = self._dfs[('{0:.1f}_x'.format(self.p2), 'med')].values - \
-            self._dfs[('{0:.1f}_x'.format(self.p1), 'med')].values
+        W_x = self._dfs[(f'{self.p2:.1f}_x', 'med')].values - \
+            self._dfs[(f'{self.p1:.1f}_x', 'med')].values
         W_ny = np.maximum(
-            self._dfs[('{0:.1f}_y'.format(self.p1), 'size')].values,
-            self._dfs[('{0:.1f}_y'.format(self.p2), 'size')].values
+            self._dfs[(f'{self.p1:.1f}_y', 'size')].values,
+            self._dfs[(f'{self.p2:.1f}_y', 'size')].values
         )
-        W_y = self._dfs[('{0:.1f}_y'.format(self.p2), 'med')].values - \
-            self._dfs[('{0:.1f}_y'.format(self.p1), 'med')].values
+        W_y = self._dfs[(f'{self.p2:.1f}_y', 'med')].values - \
+            self._dfs[(f'{self.p1:.1f}_y', 'med')].values
         W_n = W_nx + W_ny
 
         sel = K_y / K_x
@@ -218,10 +220,10 @@ class DataModel():
     def patch_data_l(self):
         """Patch KPI data when uptake changes."""
 
-        L_nx = self._dfs[('{0:.1f}_x'.format(self.lp), 'size')].values
-        L_x = self._dfs[('{0:.1f}_x'.format(self.lp), 'med')].values
-        L_ny = self._dfs[('{0:.1f}_y'.format(self.lp), 'size')].values
-        L_y = self._dfs[('{0:.1f}_y'.format(self.lp), 'med')].values
+        L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
+        L_x = self._dfs[(f'{self.lp:.1f}_x', 'med')].values
+        L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
+        L_y = self._dfs[(f'{self.lp:.1f}_y', 'med')].values
         L_n = L_nx + L_ny
 
         return {
@@ -235,17 +237,17 @@ class DataModel():
         """Patch KPI data when working capacity changes."""
 
         W_nx = np.maximum(
-            self._dfs[('{0:.1f}_x'.format(self.p1), 'size')].values,
-            self._dfs[('{0:.1f}_x'.format(self.p2), 'size')].values
+            self._dfs[(f'{self.p1:.1f}_x', 'size')].values,
+            self._dfs[(f'{self.p2:.1f}_x', 'size')].values
         )
-        W_x = self._dfs[('{0:.1f}_x'.format(self.p2), 'med')].values - \
-            self._dfs[('{0:.1f}_x'.format(self.p1), 'med')].values
+        W_x = self._dfs[(f'{self.p2:.1f}_x', 'med')].values - \
+            self._dfs[(f'{self.p1:.1f}_x', 'med')].values
         W_ny = np.maximum(
-            self._dfs[('{0:.1f}_y'.format(self.p1), 'size')].values,
-            self._dfs[('{0:.1f}_y'.format(self.p2), 'size')].values
+            self._dfs[(f'{self.p1:.1f}_y', 'size')].values,
+            self._dfs[(f'{self.p2:.1f}_y', 'size')].values
         )
-        W_y = self._dfs[('{0:.1f}_y'.format(self.p2), 'med')].values - \
-            self._dfs[('{0:.1f}_y'.format(self.p1), 'med')].values
+        W_y = self._dfs[(f'{self.p2:.1f}_y', 'med')].values - \
+            self._dfs[(f'{self.p1:.1f}_y', 'med')].values
         W_n = W_nx + W_ny
         psa_W = (W_y / W_x) * self.data.data['sel']
 
