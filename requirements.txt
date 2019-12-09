@@ -3,4 +3,4 @@ numpy==1.17
 pandas==0.25
 jinja2
 requests
-pytables
+tables
