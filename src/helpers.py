@@ -31,13 +31,6 @@ def load_details_js():
 
 def load_isotherm(filename):
     """Load a particular isotherm."""
-    # path = Path.cwd() / 'data' / 'isotherms' / '{0}.json'.format(filename)
-
-    # try:
-    #     with open(path) as file:
-    #         iso = json.load(file)
-    # except Exception:
-    #     return None
 
     import requests
     isodb_session = requests.Session()

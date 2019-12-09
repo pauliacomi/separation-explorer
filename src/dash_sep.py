@@ -245,7 +245,7 @@ class SeparationDash():
         graph = figure(tools="pan,wheel_zoom,reset",
                        active_scroll="wheel_zoom",
                        plot_width=400, plot_height=250,
-                       x_range=(-0.1, 1), y_range=(-0.1, 1),
+                       x_range=(-0.01, 0.01), y_range=(-0.01, 0.01),
                        title='Isotherms {0}'.format(ads))
         rend = graph.multi_line('x', 'y', source=source,
                                 alpha=0.6, line_width=3,

@@ -27,8 +27,6 @@ class DataModel():
 
         # Dataset
         self._df = DATASET                          # Entire dataset
-        self.g1_group = None
-        self.g2_group = None
         self._dfs = INITIAL                         # Pre-processed KPI dataset
         self.ads_list = PROBES                      # All probes in the dashboard
         self.p_range = np.arange(0.5, 20.5, 0.5)
@@ -483,10 +481,10 @@ class DataModel():
             self.g2_iso_sel.data = self.gen_iso_dict()
             self.g1_iso_sel.selected.update(indices=[])
             self.g2_iso_sel.selected.update(indices=[])
-            self.s_dash.p_g1iso.x_range.end = 1
-            self.s_dash.p_g1iso.y_range.end = 1
-            self.s_dash.p_g2iso.x_range.end = 1
-            self.s_dash.p_g2iso.y_range.end = 1
+            self.s_dash.p_g1iso.x_range.end = 0.01
+            self.s_dash.p_g1iso.y_range.end = 0.01
+            self.s_dash.p_g2iso.x_range.end = 0.01
+            self.s_dash.p_g2iso.y_range.end = 0.01
 
             # done here
             return
@@ -500,10 +498,10 @@ class DataModel():
         self.g2_iso_sel.data = self.gen_iso_dict()
         self.g1_iso_sel.selected.update(indices=[])
         self.g2_iso_sel.selected.update(indices=[])
-        self.s_dash.p_g1iso.x_range.end = 1
-        self.s_dash.p_g1iso.y_range.end = 1
-        self.s_dash.p_g2iso.x_range.end = 1
-        self.s_dash.p_g2iso.y_range.end = 1
+        self.s_dash.p_g1iso.x_range.end = 0.01
+        self.s_dash.p_g1iso.y_range.end = 0.01
+        self.s_dash.p_g2iso.x_range.end = 0.01
+        self.s_dash.p_g2iso.y_range.end = 0.01
 
         # If we have only one point then we display isotherms
         if len(new) == 1:
@@ -529,9 +527,10 @@ class DataModel():
             self.doc.add_next_tick_callback(
                 partial(
                     self.iso_update_g1,
-                    iso={'labels': ['median'], 'x': [self.p_range], 'y': [loading],
-                         'temp': [self.t_abs], 'doi': ['']},
-                    color='k', resize=False))
+                    iso={'labels': ['median'],
+                         'x': [self.p_range[~np.isnan(loading)]],
+                         'y': [loading[~np.isnan(loading)]],
+                         'temp': [self.t_abs], 'doi': ['']}, color='k'))
 
             # rest of the isotherms
             for iso in get_isohash(
@@ -549,7 +548,9 @@ class DataModel():
             self.doc.add_next_tick_callback(
                 partial(
                     self.iso_update_g2,
-                    iso={'labels': ['median'], 'x': [self.p_range], 'y': [loading],
+                    iso={'labels': ['median'],
+                         'x': [self.p_range[~np.isnan(loading)]],
+                         'y': [loading[~np.isnan(loading)]],
                          'temp': [self.t_abs], 'doi': ['']},
                     color='k', resize=False))
 
@@ -563,25 +564,19 @@ class DataModel():
                         partial(self.iso_update_g2, iso=parsed))
 
     @gen.coroutine
-    def iso_update_g1(self, iso, color=None, resize=True):
-        if not color:
-            color = next(self.s_dash.c_cyc)
-        iso['color'] = [color]
+    def iso_update_g1(self, iso, color=None):
+        iso['color'] = [next(self.s_dash.c_cyc) if color is None else color]
         self.g1_iso_sel.stream(iso)
-        if resize:
-            if float(iso['x'][0][-1]) > self.s_dash.p_g1iso.x_range.end:
-                self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso['x'][0][-1])
-            if float(iso['y'][0][-1]) > self.s_dash.p_g1iso.y_range.end:
-                self.s_dash.p_g1iso.y_range.end = 1.1 * float(iso['y'][0][-1])
+        if float(iso['x'][0][-1]) > self.s_dash.p_g1iso.x_range.end:
+            self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso['x'][0][-1])
+        if float(iso['y'][0][-1]) > self.s_dash.p_g1iso.y_range.end:
+            self.s_dash.p_g1iso.y_range.end = 1.1 * float(iso['y'][0][-1])
 
     @gen.coroutine
     def iso_update_g2(self, iso, color=None, resize=True):
-        if not color:
-            color = next(self.s_dash.c_cyc)
-        iso['color'] = [color]
+        iso['color'] = [next(self.s_dash.c_cyc) if color is None else color]
         self.g2_iso_sel.stream(iso)
-        if resize:
-            if float(iso['x'][0][-1]) > self.s_dash.p_g2iso.x_range.end:
-                self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso['x'][0][-1])
-            if float(iso['y'][0][-1]) > self.s_dash.p_g2iso.y_range.end:
-                self.s_dash.p_g2iso.y_range.end = 1.1 * float(iso['y'][0][-1])
+        if float(iso['x'][0][-1]) > self.s_dash.p_g2iso.x_range.end:
+            self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso['x'][0][-1])
+        if float(iso['y'][0][-1]) > self.s_dash.p_g2iso.y_range.end:
+            self.s_dash.p_g2iso.y_range.end = 1.1 * float(iso['y'][0][-1])
