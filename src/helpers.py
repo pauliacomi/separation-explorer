@@ -9,7 +9,7 @@ j2_env = Environment(
 # str() wrapper to path needed because of 3.7 bug
 # see: https://bugs.python.org/issue33617
 
-isodb_base = "https://adsorption.nist.gov/isodb/api/"
+iso_packed = "./data/iso-packed"
 
 
 def load_tooltip():
@@ -32,22 +32,22 @@ def load_details_js():
 def load_isotherm(filename):
     """Load a particular isotherm."""
 
-    import requests
-    isodb_session = requests.Session()
+    import shelve
+
+    iso_packed = "./data/iso-packed"
 
     try:
-        iso = isodb_session.get(
-            isodb_base + "isotherm/" + filename + '.json', timeout=5).json()
+        with shelve.open(iso_packed) as db:
+            iso = db[filename]
     except Exception as e:
         print(e)
 
     return {
-        'labels': [iso['filename']],
-        'x': [[a['pressure'] for a in iso['isotherm_data']]],
-        'y': [[a['species_data'][0]['adsorption']
-               for a in iso['isotherm_data']]],
-        'doi': [iso['DOI']],
-        'temp': [iso['temperature']],
+        'labels': [filename],
+        'x': [iso['x']],
+        'y': [iso['y']],
+        'doi': [iso['doi']],
+        'temp': [iso['temp']],
     }
 
 
