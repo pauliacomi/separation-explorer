@@ -194,8 +194,8 @@ class DataModel():
             self._dfs[(f'{self.p1:.1f}_y', 'med')].values
         W_n = W_nx + W_ny
 
-        sel = K_y / K_x
-        psa_W = (K_y / W_x) * sel
+        sel = np.exp(K_y - K_x)
+        psa_W = (W_y / W_x) * sel
 
         return {
             'labels': self._dfs.index,
