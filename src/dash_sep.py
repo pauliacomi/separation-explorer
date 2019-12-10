@@ -36,7 +36,6 @@ class SeparationDash():
         # Process button
         ################################
 
-        # Button to commence tour
         self.process = Button(
             label="Generate", button_type="primary",
             name='process', sizing_mode='scale_width')

@@ -72,6 +72,19 @@ def select_data(data, i_type, t_abs, t_tol, g1, g2):
         on=('mat'), suffixes=('_x', '_y'))
 
 
+def select_data_single(data, i_type, t_abs, t_tol, g1):
+    """Generate two-ads dataframe when selected."""
+    if i_type:
+        dft = data[
+            (data['type'] == i_type) &
+            (data['t'].between(t_abs - t_tol, t_abs + t_tol))
+        ]
+    else:
+        dft = data[data['t'].between(t_abs - t_tol, t_abs + t_tol)]
+
+    return calc_kpi(dft[dft['ads'] == g1].drop(columns=['type', 't', 'ads']).groupby('mat', sort=False))
+
+
 def get_isohash(data, i_type, t_abs, t_tol, ads, mat):
 
     if i_type:

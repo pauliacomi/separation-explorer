@@ -32,24 +32,44 @@ class StorageDash():
         # Save reference to model
         self.model = model
 
-        # Button to commence tour
-        self.tour_button = Button(
-            label="Show me how this works!", button_type="success")
-        self.tour_button.js_on_click(CustomJS(code="startStorIntro()"))
+        ################################
+        # Process button
+        ################################
+
+        self.process = Button(
+            label="Generate", button_type="primary",
+            name='process', sizing_mode='scale_width')
+        self.process.js_on_click(CustomJS(code="toggleLoading()"))
+
+        ################################
+        # Widgets
+        ################################
 
         # Data type selection
         self.data_type = RadioButtonGroup(
-            labels=["All Data", "Experimental", "Simulated"], active=0)
+            labels=["All Data", "Experimental", "Simulated"],
+            active=0, css_classes=['dtypes'])
 
         # Adsorbate drop-down selections
         self.g1_sel = Select(title="Adsorbate 1",
-                             options=self.model.ads_list, value=self.model.g1)
+                             options=self.model.ads_list, value=self.model.g1,
+                             css_classes=['g-selectors'])
 
         # Temperature selection
         self.t_absolute = Spinner(
             value=303, title='Temperature:', css_classes=['t_abs'])
         self.t_tolerance = Spinner(
             value=10, title='Tolerance:', css_classes=['t_tol'])
+
+        # Combined in a layout
+        self.dsel_widgets = layout([
+            [self.data_type],
+            [self.g1_sel, self.g2_sel, self.t_absolute, self.t_tolerance],
+        ], sizing_mode='scale_width', name="widgets")
+
+        ################################
+        # KPI Plots
+        ################################
 
         # Top graph generation
         tooltip = load_tooltip()
@@ -85,7 +105,7 @@ class StorageDash():
                                      )
 
         # Material datatable
-        self.details = DataTable(
+        self.mat_list = DataTable(
             columns=[
                 TableColumn(field="labels", title="Material", width=300),
                 TableColumn(field="sel", title="KH2/KH1", width=25,
@@ -101,36 +121,39 @@ class StorageDash():
             fit_columns=True,
         )
 
+        # Custom css classes for interactors
+        self.p_henry.css_classes = ['g-henry']
+        self.p_loading.css_classes = ['g-load']
+        self.p_wc.css_classes = ['g-wcap']
+        self.mat_list.css_classes = ['t-details']
+
         # Generate the axis labels
         self.top_graph_labels()
 
+        self.kpi_plots = layout([
+            [gridplot([
+                [self.mat_list, self.p_henry],
+                [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
+            [self.p_slider, self.wc_slider],
+        ], sizing_mode='scale_width', name="kpiplots")
+        self.kpi_plots.children[0].css_classes = ['kpi']
+        self.kpi_plots.children[1].css_classes = ['p-selectors']
+
+        ################################
+        # Isotherm details explorer
+        ################################
+
         # Isotherm display graphs
         self.p_g1iso = self.bottom_graph(self.model.g1_iso_sel, self.model.g1)
+        self.p_g2iso = self.bottom_graph(self.model.g2_iso_sel, self.model.g2)
 
         # Isotherm display palette
         self.c_cyc = cycle(gen_palette(20))
 
-        # Layout
-        self.layout = layout([
-            [self.tour_button, self.data_type],
-            [self.g1_sel, self.t_absolute, self.t_tolerance],
-            [gridplot([
-                [self.details, self.p_henry],
-                [self.p_loading, self.p_wc]], sizing_mode='scale_width')],
-            [self.p_slider, self.wc_slider],
-            [self.p_g1iso],
-        ], sizing_mode='scale_width')
-
-        # Custom css classes for interactors
-        self.details.css_classes = ['t-details']
-        self.p_henry.css_classes = ['g-henry']
-        self.p_loading.css_classes = ['g-load']
-        self.p_wc.css_classes = ['g-wcap']
-
-        self.layout.children[1].css_classes = ['g-selectors']
-        self.layout.children[2].css_classes = ['kpi']
-        self.layout.children[3].css_classes = ['p-selectors']
-        self.layout.children[4].css_classes = ['isotherms']
+        self.detail_plots = layout([
+            [self.p_g1iso, self.p_g2iso],
+        ], sizing_mode='scale_width', name="detailplots")
+        self.detail_plots.children[0].css_classes = ['isotherms']
 
     # #########################################################################
     # Graph generators

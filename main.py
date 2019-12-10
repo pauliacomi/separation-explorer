@@ -10,7 +10,7 @@ doc = curdoc()
 model = DataModel(doc)
 
 sep_dash = SeparationDash(model)
-stor_dash = StorageDash(model)
+# stor_dash = StorageDash(model)
 
 model.callback_link_sep(sep_dash)
 

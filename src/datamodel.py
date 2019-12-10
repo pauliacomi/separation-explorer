@@ -57,11 +57,11 @@ class DataModel():
         self.data.selected.on_change('indices', self.selection_callback)
         self.data.js_on_change('data', CustomJS(code="toggleLoading()"))
 
-    def callback_link_sep(self, s_dash):
+    def callback_link_sep(self, sep_dash):
         """Link the separation dashboard to the model."""
 
         # Store reference
-        self.s_dash = s_dash
+        self.sep_dash = sep_dash
 
         # Data type selections
         def dtype_callback(attr, old, new):
@@ -72,7 +72,7 @@ class DataModel():
             elif new == 2:
                 self.iso_type = 'sim'
 
-        self.s_dash.data_type.on_change('active', dtype_callback)
+        self.sep_dash.data_type.on_change('active', dtype_callback)
 
         # Adsorbate drop-down selections
         def g1_sel_callback(attr, old, new):
@@ -81,8 +81,8 @@ class DataModel():
         def g2_sel_callback(attr, old, new):
             self.g2 = new
 
-        self.s_dash.g1_sel.on_change("value", g1_sel_callback)
-        self.s_dash.g2_sel.on_change("value", g2_sel_callback)
+        self.sep_dash.g1_sel.on_change("value", g1_sel_callback)
+        self.sep_dash.g2_sel.on_change("value", g2_sel_callback)
 
         # Temperature selection callback
         def t_abs_callback(attr, old, new):
@@ -91,17 +91,18 @@ class DataModel():
         def t_tol_callback(attr, old, new):
             self.t_tol = new
 
-        self.s_dash.t_absolute.on_change("value", t_abs_callback)
-        self.s_dash.t_tolerance.on_change("value", t_tol_callback)
+        self.sep_dash.t_absolute.on_change("value", t_abs_callback)
+        self.sep_dash.t_tolerance.on_change("value", t_tol_callback)
 
         # Update callback
-        self.s_dash.process.on_click(self.update_data)
+        self.sep_dash.process.on_click(self.update_data)
 
         # Pressure slider
-        self.s_dash.p_slider.on_change('value_throttled', self.uptake_callback)
+        self.sep_dash.p_slider.on_change(
+            'value_throttled', self.uptake_callback)
 
         # Working capacity slider
-        self.s_dash.wc_slider.on_change('value_throttled', self.wc_callback)
+        self.sep_dash.wc_slider.on_change('value_throttled', self.wc_callback)
 
         # Slider limits
         if len(self.data.data['labels']) > 0:
@@ -112,8 +113,8 @@ class DataModel():
                         np.nanmax(self.data.data['L_y'])
                     ])
                 ))]
-            self.s_dash.p_slider.end = limit
-            self.s_dash.wc_slider.end = limit
+            self.sep_dash.p_slider.end = limit
+            self.sep_dash.wc_slider.end = limit
 
     # #########################################################################
     # Selection update
@@ -129,13 +130,13 @@ class DataModel():
             self.data.selected.update(indices=[])
 
         # Update labels
-        self.s_dash.top_graph_labels()
+        self.sep_dash.top_graph_labels()
 
         # Update detail plots
         self.g1_iso_sel.data = self.gen_iso_dict()
         self.g2_iso_sel.data = self.gen_iso_dict()
-        self.s_dash.p_g1iso.title.text = 'Isotherms {0}'.format(self.g1)
-        self.s_dash.p_g2iso.title.text = 'Isotherms {0}'.format(self.g2)
+        self.sep_dash.p_g1iso.title.text = 'Isotherms {0}'.format(self.g1)
+        self.sep_dash.p_g2iso.title.text = 'Isotherms {0}'.format(self.g2)
 
     def calculate_data(self):
         self._dfs = select_data(
@@ -159,15 +160,8 @@ class DataModel():
                         np.nanmax(self.data.data['L_y'])
                     ])
                 ))]
-            self.s_dash.p_slider.end = limit
-            self.s_dash.wc_slider.end = limit
-
-            print(np.nanmax(self.data.data['L_x']))
-            print(np.nanmax(self.data.data['L_y']))
-            print(np.nanmin([
-                np.nanmax(self.data.data['L_x']),
-                np.nanmax(self.data.data['L_y'])
-            ]))
+            self.sep_dash.p_slider.end = limit
+            self.sep_dash.wc_slider.end = limit
 
     # #########################################################################
     # Set up pressure slider and callback
@@ -290,7 +284,6 @@ class DataModel():
             L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
             L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
             L_n = L_nx + L_ny
-            print(self._dfs[(f'{self.lp:.1f}_x', 'med')].values)
 
         return {
             # Loading data
@@ -571,10 +564,10 @@ class DataModel():
             self.g2_iso_sel.data = self.gen_iso_dict()
             self.g1_iso_sel.selected.update(indices=[])
             self.g2_iso_sel.selected.update(indices=[])
-            self.s_dash.p_g1iso.x_range.end = 0.01
-            self.s_dash.p_g1iso.y_range.end = 0.01
-            self.s_dash.p_g2iso.x_range.end = 0.01
-            self.s_dash.p_g2iso.y_range.end = 0.01
+            self.sep_dash.p_g1iso.x_range.end = 0.01
+            self.sep_dash.p_g1iso.y_range.end = 0.01
+            self.sep_dash.p_g2iso.x_range.end = 0.01
+            self.sep_dash.p_g2iso.y_range.end = 0.01
 
             # done here
             return
@@ -588,10 +581,10 @@ class DataModel():
         self.g2_iso_sel.data = self.gen_iso_dict()
         self.g1_iso_sel.selected.update(indices=[])
         self.g2_iso_sel.selected.update(indices=[])
-        self.s_dash.p_g1iso.x_range.end = 0.01
-        self.s_dash.p_g1iso.y_range.end = 0.01
-        self.s_dash.p_g2iso.x_range.end = 0.01
-        self.s_dash.p_g2iso.y_range.end = 0.01
+        self.sep_dash.p_g1iso.x_range.end = 0.01
+        self.sep_dash.p_g1iso.y_range.end = 0.01
+        self.sep_dash.p_g2iso.x_range.end = 0.01
+        self.sep_dash.p_g2iso.y_range.end = 0.01
 
         # If we have only one point then we display isotherms
         if len(new) == 1:
@@ -655,18 +648,18 @@ class DataModel():
 
     @gen.coroutine
     def iso_update_g1(self, iso, color=None):
-        iso['color'] = [next(self.s_dash.c_cyc) if color is None else color]
+        iso['color'] = [next(self.sep_dash.c_cyc) if color is None else color]
         self.g1_iso_sel.stream(iso)
-        if float(iso['x'][0][-1]) > self.s_dash.p_g1iso.x_range.end:
-            self.s_dash.p_g1iso.x_range.end = 1.1 * float(iso['x'][0][-1])
-        if float(iso['y'][0][-1]) > self.s_dash.p_g1iso.y_range.end:
-            self.s_dash.p_g1iso.y_range.end = 1.1 * float(iso['y'][0][-1])
+        if float(iso['x'][0][-1]) > self.sep_dash.p_g1iso.x_range.end:
+            self.sep_dash.p_g1iso.x_range.end = 1.1 * float(iso['x'][0][-1])
+        if float(iso['y'][0][-1]) > self.sep_dash.p_g1iso.y_range.end:
+            self.sep_dash.p_g1iso.y_range.end = 1.1 * float(iso['y'][0][-1])
 
     @gen.coroutine
     def iso_update_g2(self, iso, color=None, resize=True):
-        iso['color'] = [next(self.s_dash.c_cyc) if color is None else color]
+        iso['color'] = [next(self.sep_dash.c_cyc) if color is None else color]
         self.g2_iso_sel.stream(iso)
-        if float(iso['x'][0][-1]) > self.s_dash.p_g2iso.x_range.end:
-            self.s_dash.p_g2iso.x_range.end = 1.1 * float(iso['x'][0][-1])
-        if float(iso['y'][0][-1]) > self.s_dash.p_g2iso.y_range.end:
-            self.s_dash.p_g2iso.y_range.end = 1.1 * float(iso['y'][0][-1])
+        if float(iso['x'][0][-1]) > self.sep_dash.p_g2iso.x_range.end:
+            self.sep_dash.p_g2iso.x_range.end = 1.1 * float(iso['x'][0][-1])
+        if float(iso['y'][0][-1]) > self.sep_dash.p_g2iso.y_range.end:
+            self.sep_dash.p_g2iso.y_range.end = 1.1 * float(iso['y'][0][-1])
