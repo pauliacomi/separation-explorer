@@ -61,6 +61,9 @@ def select_data(data, i_type, t_abs, t_tol, g1, g2):
     common = list(set(g1_filt['mat'].unique()).intersection(
         g2_filt['mat'].unique()))
 
+    if len(common) == 0:
+        return None
+
     return pd.merge(
         calc_kpi(g1_filt[g1_filt['mat'].isin(common)].drop(
             columns=['type', 't', 'ads']).groupby('mat', sort=False)),

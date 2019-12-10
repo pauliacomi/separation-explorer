@@ -103,6 +103,18 @@ class DataModel():
         # Working capacity slider
         self.s_dash.wc_slider.on_change('value_throttled', self.wc_callback)
 
+        # Slider limits
+        if len(self.data.data['labels']) > 0:
+            limit = self.p_range[
+                int(np.floor(
+                    np.nanmin([
+                        np.nanmax(self.data.data['L_x']),
+                        np.nanmax(self.data.data['L_y'])
+                    ])
+                ))]
+            self.s_dash.p_slider.end = limit
+            self.s_dash.wc_slider.end = limit
+
     # #########################################################################
     # Selection update
 
@@ -138,6 +150,25 @@ class DataModel():
         """Assign data"""
         self.data.data = self.gen_data()
 
+        # Recalculate slider limits
+        if len(self.data.data['labels']) > 0:
+            limit = self.p_range[
+                int(np.floor(
+                    np.nanmin([
+                        np.nanmax(self.data.data['L_x']),
+                        np.nanmax(self.data.data['L_y'])
+                    ])
+                ))]
+            self.s_dash.p_slider.end = limit
+            self.s_dash.wc_slider.end = limit
+
+            print(np.nanmax(self.data.data['L_x']))
+            print(np.nanmax(self.data.data['L_y']))
+            print(np.nanmin([
+                np.nanmax(self.data.data['L_x']),
+                np.nanmax(self.data.data['L_y'])
+            ]))
+
     # #########################################################################
     # Set up pressure slider and callback
 
@@ -166,30 +197,60 @@ class DataModel():
     def gen_data(self):
         """Select or generate all KPI data for a pair of ads_list."""
 
-        K_nx = self._dfs[('kH_x', 'size')].values
+        if self._dfs is None:
+            return {
+                'labels': [], 'sel': [], 'psa_W': [],
+                'K_x': [], 'K_y': [], 'K_nx': [], 'K_ny': [], 'K_n': [],
+                'L_x': [], 'L_y': [], 'L_nx': [], 'L_ny': [], 'L_n': [],
+                'W_x': [], 'W_y': [], 'W_nx': [], 'W_ny': [], 'W_n': [],
+            }
+
+        # Henry coefficient
         K_x = self._dfs[('kH_x', 'med')].values
-        K_ny = self._dfs[('kH_y', 'size')].values
         K_y = self._dfs[('kH_y', 'med')].values
+        K_nx = self._dfs[('kH_x', 'size')].values
+        K_ny = self._dfs[('kH_y', 'size')].values
         K_n = K_nx + K_ny
 
-        L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
-        L_x = self._dfs[(f'{self.lp:.1f}_x', 'med')].values
-        L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
-        L_y = self._dfs[(f'{self.lp:.1f}_y', 'med')].values
-        L_n = L_nx + L_ny
+        # Loading
+        if self.lp == 0:
+            L_nx = L_x = L_ny = L_y = L_n = 0
+
+        else:
+            L_x = self._dfs[(f'{self.lp:.1f}_x', 'med')].values
+            L_y = self._dfs[(f'{self.lp:.1f}_y', 'med')].values
+            L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
+            L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
+            L_n = L_nx + L_ny
+
+        # Working capacity
+        if self.p1 == 0:
+            W_xp1 = W_yp1 = 0
+        else:
+            W_xp1 = self._dfs[(f'{self.p1:.1f}_x', 'med')].values
+            W_yp1 = self._dfs[(f'{self.p1:.1f}_y', 'med')].values
+
+        if self.p2 == 0:
+            W_xp2 = W_yp2 = 0
+        else:
+            W_xp2 = self._dfs[(f'{self.p2:.1f}_x', 'med')].values
+            W_yp2 = self._dfs[(f'{self.p2:.1f}_y', 'med')].values
+
+        W_x = W_xp2 - W_xp1
+        W_y = W_yp2 - W_yp1
 
         W_nx = np.maximum(
-            self._dfs[(f'{self.p1:.1f}_x', 'size')].values,
-            self._dfs[(f'{self.p2:.1f}_x', 'size')].values
+            self._dfs[(f'{self.p1:.1f}_x', 'size')
+                      ].values if self.p1 != 0 else 0,
+            self._dfs[(f'{self.p2:.1f}_x', 'size')
+                      ].values if self.p2 != 0 else 0
         )
-        W_x = self._dfs[(f'{self.p2:.1f}_x', 'med')].values - \
-            self._dfs[(f'{self.p1:.1f}_x', 'med')].values
         W_ny = np.maximum(
-            self._dfs[(f'{self.p1:.1f}_y', 'size')].values,
-            self._dfs[(f'{self.p2:.1f}_y', 'size')].values
+            self._dfs[(f'{self.p1:.1f}_y', 'size')
+                      ].values if self.p1 != 0 else 0,
+            self._dfs[(f'{self.p2:.1f}_y', 'size')
+                      ].values if self.p2 != 0 else 0
         )
-        W_y = self._dfs[(f'{self.p2:.1f}_y', 'med')].values - \
-            self._dfs[(f'{self.p1:.1f}_y', 'med')].values
         W_n = W_nx + W_ny
 
         sel = np.exp(K_y - K_x)
@@ -218,11 +279,18 @@ class DataModel():
     def patch_data_l(self):
         """Patch KPI data when uptake changes."""
 
-        L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
-        L_x = self._dfs[(f'{self.lp:.1f}_x', 'med')].values
-        L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
-        L_y = self._dfs[(f'{self.lp:.1f}_y', 'med')].values
-        L_n = L_nx + L_ny
+        if self._dfs is None:
+            return {}
+
+        if self.lp == 0:
+            L_nx = L_x = L_ny = L_y = L_n = 0
+        else:
+            L_x = self._dfs[(f'{self.lp:.1f}_x', 'med')].values
+            L_y = self._dfs[(f'{self.lp:.1f}_y', 'med')].values
+            L_nx = self._dfs[(f'{self.lp:.1f}_x', 'size')].values
+            L_ny = self._dfs[(f'{self.lp:.1f}_y', 'size')].values
+            L_n = L_nx + L_ny
+            print(self._dfs[(f'{self.lp:.1f}_x', 'med')].values)
 
         return {
             # Loading data
@@ -234,18 +302,36 @@ class DataModel():
     def patch_data_w(self):
         """Patch KPI data when working capacity changes."""
 
+        if self._dfs is None:
+            return {}
+
+        if self.p1 == 0:
+            W_xp1 = W_yp1 = 0
+        else:
+            W_xp1 = self._dfs[(f'{self.p1:.1f}_x', 'med')].values
+            W_yp1 = self._dfs[(f'{self.p1:.1f}_y', 'med')].values
+
+        if self.p2 == 0:
+            W_xp2 = W_yp2 = 0
+        else:
+            W_xp2 = self._dfs[(f'{self.p2:.1f}_x', 'med')].values
+            W_yp2 = self._dfs[(f'{self.p2:.1f}_y', 'med')].values
+
+        W_x = W_xp2 - W_xp1
+        W_y = W_yp2 - W_yp1
+
         W_nx = np.maximum(
-            self._dfs[(f'{self.p1:.1f}_x', 'size')].values,
-            self._dfs[(f'{self.p2:.1f}_x', 'size')].values
+            self._dfs[(f'{self.p1:.1f}_x', 'size')
+                      ].values if self.p1 != 0 else 0,
+            self._dfs[(f'{self.p2:.1f}_x', 'size')
+                      ].values if self.p2 != 0 else 0
         )
-        W_x = self._dfs[(f'{self.p2:.1f}_x', 'med')].values - \
-            self._dfs[(f'{self.p1:.1f}_x', 'med')].values
         W_ny = np.maximum(
-            self._dfs[(f'{self.p1:.1f}_y', 'size')].values,
-            self._dfs[(f'{self.p2:.1f}_y', 'size')].values
+            self._dfs[(f'{self.p1:.1f}_y', 'size')
+                      ].values if self.p1 != 0 else 0,
+            self._dfs[(f'{self.p2:.1f}_y', 'size')
+                      ].values if self.p2 != 0 else 0
         )
-        W_y = self._dfs[(f'{self.p2:.1f}_y', 'med')].values - \
-            self._dfs[(f'{self.p1:.1f}_y', 'med')].values
         W_n = W_nx + W_ny
         psa_W = (W_y / W_x) * self.data.data['sel']
 
@@ -302,7 +388,7 @@ class DataModel():
                     K_ex = self._dfs.loc[mat, ('kH_x', 'err')]
                     K_ey = self._dfs.loc[mat, ('kH_y', 'err')]
 
-                if np.isnan(L_x) or np.isnan(L_y):
+                if np.isnan(L_x) or np.isnan(L_y) or self.lp == 0:
                     L_x, L_y = 0, 0
                     L_ex, L_ey = 0, 0
                 else:
@@ -315,10 +401,12 @@ class DataModel():
                     W_x, W_y = 0, 0
                     W_ex, W_ey = 0, 0
                 else:
-                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] + \
-                        self._dfs.loc[mat, ('{:.1f}_x'.format(self.p2), 'err')]
-                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] + \
-                        self._dfs.loc[mat, ('{:.1f}_y'.format(self.p2), 'err')]
+                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                        self._dfs.loc[mat, ('{:.1f}_x'.format(
+                            self.p2), 'err')] if self.p2 != 0 else 0
+                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                        self._dfs.loc[mat, ('{:.1f}_y'.format(
+                            self.p2), 'err')] if self.p2 != 0 else 0
 
                 mats.extend([mat, mat])
                 K_X.extend([K_x, K_x])
@@ -377,7 +465,7 @@ class DataModel():
 
                 L_x = self.data.data['L_x'][index]
                 L_y = self.data.data['L_y'][index]
-                if np.isnan(L_x) or np.isnan(L_y):
+                if np.isnan(L_x) or np.isnan(L_y) or self.lp == 0:
                     L_x, L_y = 0, 0
                     L_ex, L_ey = 0, 0
                 else:
@@ -429,10 +517,12 @@ class DataModel():
                     W_ex, W_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] + \
-                        self._dfs.loc[mat, ('{:.1f}_x'.format(self.p2), 'err')]
-                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] + \
-                        self._dfs.loc[mat, ('{:.1f}_y'.format(self.p2), 'err')]
+                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                        self._dfs.loc[mat, ('{:.1f}_x'.format(
+                            self.p2), 'err')] if self.p2 != 0 else 0
+                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                        self._dfs.loc[mat, ('{:.1f}_y'.format(
+                            self.p2), 'err')] if self.p2 != 0 else 0
 
                 W_X.extend([W_x, W_x])
                 W_Y.extend([W_y, W_y])
