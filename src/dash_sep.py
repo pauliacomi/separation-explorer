@@ -38,7 +38,7 @@ class SeparationDash():
 
         # Button to commence tour
         self.process = Button(
-            label="Update", button_type="primary",
+            label="Generate", button_type="primary",
             name='process', sizing_mode='scale_width')
         self.process.js_on_click(CustomJS(code="toggleLoading()"))
 
