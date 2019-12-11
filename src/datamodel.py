@@ -5,7 +5,7 @@ from bokeh.models.callbacks import CustomJS
 
 from src.datastore import DATASET, INITIAL, PROBES
 from src.helpers import load_isotherm as load_isotherm
-from src.statistics import select_data, get_isohash
+from src.statistics import select_data, get_isohash, find_nearest
 from functools import partial
 from threading import Thread
 from tornado import gen
@@ -106,13 +106,12 @@ class DataModel():
 
         # Slider limits
         if len(self.data.data['labels']) > 0:
-            limit = self.p_range[
-                int(np.floor(
+            limit = find_nearest(self.p_range, 
                     np.nanmin([
                         np.nanmax(self.data.data['L_x']),
                         np.nanmax(self.data.data['L_y'])
                     ])
-                ))]
+                )
             self.sep_dash.p_slider.end = limit
             self.sep_dash.wc_slider.end = limit
 
@@ -153,13 +152,12 @@ class DataModel():
 
         # Recalculate slider limits
         if len(self.data.data['labels']) > 0:
-            limit = self.p_range[
-                int(np.floor(
+            limit = find_nearest(self.p_range, 
                     np.nanmin([
                         np.nanmax(self.data.data['L_x']),
                         np.nanmax(self.data.data['L_y'])
                     ])
-                ))]
+                )
             self.sep_dash.p_slider.end = limit
             self.sep_dash.wc_slider.end = limit
 

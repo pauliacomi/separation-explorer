@@ -97,3 +97,7 @@ def get_isohash(data, i_type, t_abs, t_tol, ads, mat):
         (dft['ads'] == ads) &
         (dft['mat'] == mat)
     ].index
+
+
+def find_nearest(array, value):
+    return array[(np.abs(array - value)).argmin()]

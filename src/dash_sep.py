@@ -79,16 +79,18 @@ class SeparationDash():
             "K", "Henry coefficient (log)",
             self.model.data, self.model.errors, tooltip)
         self.p_loading, rend2 = self.top_graph(
-            "L", "Uptake at selected pressure",
+            "L", "Uptake at selected pressure (bar)",
             self.model.data, self.model.errors, tooltip)
         self.p_wc, rend3 = self.top_graph(
-            "W", "Working capacity in selected range",
+            "W", "Working capacity in selected range (bar)",
             self.model.data, self.model.errors, tooltip)
 
         # Give graphs the same hover and select effect
-        sel = Circle(fill_alpha=1, fill_color="red", line_color='black')
+        sel = Circle(fill_alpha=1, fill_color="red", line_color=None)
+        nonsel = Circle(fill_alpha=0.2, fill_color="blue", line_color=None)
         for rend in [rend1, rend2, rend3]:
             rend.selection_glyph = sel
+            rend.nonselection_glyph = nonsel
             rend.hover_glyph = sel
 
         # Pressure slider
@@ -110,9 +112,9 @@ class SeparationDash():
         self.mat_list = DataTable(
             columns=[
                 TableColumn(field="labels", title="Material", width=300),
-                TableColumn(field="sel", title="KH2/KH1", width=25,
+                TableColumn(field="sel", title="KH2/KH1", width=35,
                             formatter=NumberFormatter(format='‘0.0a’')),
-                TableColumn(field="psa_W", title="PSA-API", width=30,
+                TableColumn(field="psa_W", title="PSA-API", width=35,
                             formatter=NumberFormatter(format='‘0.0a’')),
             ],
             source=self.model.data,
