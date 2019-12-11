@@ -106,12 +106,10 @@ class DataModel():
 
         # Slider limits
         if len(self.data.data['labels']) > 0:
-            limit = find_nearest(self.p_range, 
-                    np.nanmin([
-                        np.nanmax(self.data.data['L_x']),
-                        np.nanmax(self.data.data['L_y'])
-                    ])
-                )
+            limit = find_nearest(self.p_range, np.nanmin([
+                np.nanmax(self.data.data['L_x']),
+                np.nanmax(self.data.data['L_y'])
+            ]))
             self.sep_dash.p_slider.end = limit
             self.sep_dash.wc_slider.end = limit
 
@@ -152,12 +150,10 @@ class DataModel():
 
         # Recalculate slider limits
         if len(self.data.data['labels']) > 0:
-            limit = find_nearest(self.p_range, 
-                    np.nanmin([
-                        np.nanmax(self.data.data['L_x']),
-                        np.nanmax(self.data.data['L_y'])
-                    ])
-                )
+            limit = find_nearest(self.p_range, np.nanmin([
+                np.nanmax(self.data.data['L_x']),
+                np.nanmax(self.data.data['L_y'])
+            ]))
             self.sep_dash.p_slider.end = limit
             self.sep_dash.wc_slider.end = limit
 
@@ -384,18 +380,18 @@ class DataModel():
                     L_ex, L_ey = 0, 0
                 else:
                     L_ex = self._dfs.loc[mat,
-                                         ('{:.1f}_x'.format(self.lp), 'err')]
+                                         (f'{self.lp:.1f}_x', 'err')]
                     L_ey = self._dfs.loc[mat,
-                                         ('{:.1f}_y'.format(self.lp), 'err')]
+                                         (f'{self.lp:.1f}_y', 'err')]
 
                 if np.isnan(W_x) or np.isnan(W_y):
                     W_x, W_y = 0, 0
                     W_ex, W_ey = 0, 0
                 else:
-                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                    W_ex = self._dfs.loc[mat, (f'{self.p1:.1f}_x', 'err')] if self.p1 != 0 else 0 + \
                         self._dfs.loc[mat, ('{:.1f}_x'.format(
                             self.p2), 'err')] if self.p2 != 0 else 0
-                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                    W_ey = self._dfs.loc[mat, (f'{self.p1:.1f}_y', 'err')] if self.p1 != 0 else 0 + \
                         self._dfs.loc[mat, ('{:.1f}_y'.format(
                             self.p2), 'err')] if self.p2 != 0 else 0
 
@@ -462,9 +458,9 @@ class DataModel():
                 else:
                     mat = self.data.data['labels'][index]
                     L_ex = self._dfs.loc[mat,
-                                         ('{:.1f}_x'.format(self.lp), 'err')]
+                                         (f'{self.lp:.1f}_x', 'err')]
                     L_ey = self._dfs.loc[mat,
-                                         ('{:.1f}_y'.format(self.lp), 'err')]
+                                         (f'{self.lp:.1f}_y', 'err')]
 
                 L_X.extend([L_x, L_x])
                 L_Y.extend([L_y, L_y])
@@ -508,10 +504,10 @@ class DataModel():
                     W_ex, W_ey = 0, 0
                 else:
                     mat = self.data.data['labels'][index]
-                    W_ex = self._dfs.loc[mat, ('{:.1f}_x'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                    W_ex = self._dfs.loc[mat, (f'{self.p1:.1f}_x', 'err')] if self.p1 != 0 else 0 + \
                         self._dfs.loc[mat, ('{:.1f}_x'.format(
                             self.p2), 'err')] if self.p2 != 0 else 0
-                    W_ey = self._dfs.loc[mat, ('{:.1f}_y'.format(self.p1), 'err')] if self.p1 != 0 else 0 + \
+                    W_ey = self._dfs.loc[mat, (f'{self.p1:.1f}_y', 'err')] if self.p1 != 0 else 0 + \
                         self._dfs.loc[mat, ('{:.1f}_y'.format(
                             self.p2), 'err')] if self.p2 != 0 else 0
 
