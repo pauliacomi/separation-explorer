@@ -4,7 +4,7 @@ from bokeh.plotting import figure
 from bokeh.layouts import layout, gridplot
 from bokeh.models.widgets import (
     Button, RadioButtonGroup, Spinner,
-    Slider, RangeSlider, Select, Div
+    Slider, RangeSlider, Select
 )
 from bokeh.models.widgets.tables import DataTable, TableColumn, NumberFormatter
 from bokeh.models.callbacks import CustomJS
@@ -38,7 +38,7 @@ class SeparationDash():
 
         self.process = Button(
             label="Generate", button_type="primary",
-            name='process', sizing_mode='scale_width')
+            name='process', sizing_mode='scale_width', css_classes=['generate'])
         self.process.js_on_click(CustomJS(code="toggleLoading()"))
 
         ################################
@@ -59,9 +59,9 @@ class SeparationDash():
 
         # Temperature selection
         self.t_absolute = Spinner(
-            value=303, title='Temperature:', css_classes=['t_abs'])
+            value=303, title='Temperature:', css_classes=['t-abs'])
         self.t_tolerance = Spinner(
-            value=10, title='Tolerance:', css_classes=['t_tol'])
+            value=10, title='Tolerance:', css_classes=['t-tol'])
 
         # Combined in a layout
         self.dsel_widgets = layout([
@@ -97,7 +97,7 @@ class SeparationDash():
         self.p_slider = Slider(title="Pressure (bar)", value=0.5,
                                start=0, end=20, step=0.5,
                                callback_policy='throttle',
-                               callback_throttle=500,
+                               callback_throttle=200,
                                )
 
         # Working capacity slider
@@ -105,7 +105,7 @@ class SeparationDash():
                                      value=(0.5, 5),
                                      start=0, end=20, step=0.5,
                                      callback_policy='throttle',
-                                     callback_throttle=500,
+                                     callback_throttle=200,
                                      )
 
         # Material datatable
