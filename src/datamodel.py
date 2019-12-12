@@ -27,17 +27,17 @@ class DataModel():
 
         # Dataset
         self._df = DATASET                          # Entire dataset
-        self._dfs = INITIAL.copy()                  # Pre-processed KPI dataset
+        self._dfs = INITIAL                         # Pre-processed KPI dataset
         self.ads_list = PROBES                      # All probes in the dashboard
         self.p_range = np.arange(0.5, 20.5, 0.5)
 
         # Adsorbate definitions
-        self.g1 = "propane"
-        self.g2 = "propene"
+        self.g1 = "methane"
+        self.g2 = "carbon dioxide"
 
         # Temperature definitions
         self.t_abs = 303
-        self.t_tol = 10
+        self.t_tol = 5
 
         # Isotherm type definitions
         self.iso_type = None

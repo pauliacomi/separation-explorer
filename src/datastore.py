@@ -7,7 +7,7 @@ from src.statistics import select_data
 
 DATASET = None          # Entire dataset
 INITIAL = None          # An example initial dataset
-PROBES = None          # An example initial dataset
+PROBES = None           # Probes in the initial dataset
 
 
 def load():
@@ -20,5 +20,5 @@ def load():
     PROBES = sorted(list(DATASET['ads'].unique()))
     # Example dataset
     INITIAL = select_data(
-        DATASET, None, 303, 10, 'propane', 'propene')
+        DATASET, None, 303, 5, 'methane', 'carbon dioxide')
     print('Data load complete.')
