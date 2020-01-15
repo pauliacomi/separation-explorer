@@ -164,7 +164,6 @@ class DataModel():
     def uptake_callback(self, attr, old, new):
         """Callback on each pressure selected for uptake."""
         self.lp = str(int(2*new))
-        print('Fired p =', self.lp)
         # regenerate graph data
         self.data.patch(self.patch_data_l(self.lp))
         if self.data.selected.indices:
@@ -270,7 +269,6 @@ class DataModel():
         if p == '0':
             L_x = L_y = L_nx = L_ny = L_n = [0 for a in self._dfs.index]
         else:
-            print(self._dfs)
             L_x = self._dfs.loc[:, (f'{p}_x', 'med')]
             L_y = self._dfs.loc[:, (f'{p}_y', 'med')]
             L_nx = self._dfs.loc[:, (f'{p}_x', 'size')]
