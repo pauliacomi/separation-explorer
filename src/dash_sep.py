@@ -59,9 +59,9 @@ class SeparationDash():
 
         # Temperature selection
         self.t_absolute = Spinner(
-            value=303, title='Temperature:', css_classes=['t-abs'])
+            value=self.model.t_abs, title='Temperature:', css_classes=['t-abs'])
         self.t_tolerance = Spinner(
-            value=10, title='Tolerance:', css_classes=['t-tol'])
+            value=self.model.t_tol, title='Tolerance:', css_classes=['t-tol'])
 
         # Combined in a layout
         self.dsel_widgets = layout([
@@ -218,7 +218,7 @@ class SeparationDash():
             text='labels', level='glyph',
             x_offset=5, y_offset=5,
             render_mode='canvas',
-            text_font_size='8pt',
+            text_font_size='10pt',
         ))
 
         # Add the colorbar to the side

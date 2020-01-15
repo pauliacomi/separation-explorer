@@ -3,7 +3,7 @@ import numpy as np
 from bokeh.models import ColumnDataSource
 from bokeh.models.callbacks import CustomJS
 
-from src.datastore import DATASET, INITIAL, PROBES
+from src.datastore import DATASET, INITIAL, PROBES, SETTINGS
 from src.helpers import load_isotherm as load_isotherm
 from src.statistics import select_data, get_isohash, find_nearest
 from functools import partial
@@ -32,12 +32,12 @@ class DataModel():
         self.p_range = np.arange(0.5, 20.5, 0.5)
 
         # Adsorbate definitions
-        self.g1 = "methane"
-        self.g2 = "carbon dioxide"
+        self.g1 = SETTINGS['g1']
+        self.g2 = SETTINGS['g2']
 
         # Temperature definitions
-        self.t_abs = 303
-        self.t_tol = 5
+        self.t_abs = SETTINGS['t_abs']
+        self.t_tol = SETTINGS['t_tol']
 
         # Isotherm type definitions
         self.iso_type = None
