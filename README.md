@@ -33,7 +33,7 @@ The separation explorer dashboard is built on top of a [Bokeh](https://bokeh.pyd
 server. The main code is found in `./src` while auxiliary html templates,
 css and javascript can be found in the `./templates/` folder.
 
-The dashboard is running on a Heroku dyno at <https://pauliacomi.com/material-explorer>.
+The dashboard is running on a Heroku dyno at <https://pauliacomi.com/separation-explorer>.
 Performance of this version is limited to the infrastructure and bandwidth provided by Heroku.
 
 It is entirely possible (and faster) to run a local version of the explorer
