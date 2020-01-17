@@ -9,8 +9,8 @@ DATASET = None          # Entire dataset
 INITIAL = None          # An example initial dataset
 PROBES = None           # Probes in the initial dataset
 SETTINGS = {
-    'g1': 'carbon dioxide',
-    'g2': 'methane',
+    'g1': 'methane',
+    'g2': 'carbon dioxide',
     't_abs': 303,
     't_tol': 5,
 }
